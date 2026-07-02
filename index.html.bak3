@@ -179,11 +179,6 @@ var STATUS = {
 };
 var STATUS_ORDER = ['open','prog','done'];
 var ROOMS = ['ห้องนั่งเล่น','ครัว','ห้องนอนใหญ่','ห้องนอน 2','ห้องน้ำ','ระเบียง','โรงจอดรถ','ภายนอก'];
-var CAT_KEY='ap_cats_v1', ROOM_KEY='ap_rooms_v1';
-function loadCustomLists(){
-  try{ (JSON.parse(localStorage.getItem(CAT_KEY)||'[]')||[]).forEach(function(x){ if(x&&x.id&&x.name&&!CATS.some(function(k){return k.id===x.id;})) CATS.push(x); }); }catch(e){}
-  try{ (JSON.parse(localStorage.getItem(ROOM_KEY)||'[]')||[]).forEach(function(x){ if(x&&ROOMS.indexOf(x)<0) ROOMS.push(x); }); }catch(e){}
-}
 var TYPES = ['บ้านเดี่ยว','บ้านแฝด','ทาวน์โฮม','คอนโดฯ'];
 
 /* ---------- utils ---------- */
@@ -346,7 +341,7 @@ var state = {
   formMode:'add', editId:null,
   formType:TYPES[0], formSheetMode:'handover',
   formCat:CATS[0].id, formSev:'mid', formRoom:ROOMS[0],
-  sigRole:'se', photoTarget:'before', formNoteDraft:'',
+  sigRole:'se', photoTarget:'before',
 };
 
 /* ---------- data helpers ---------- */
@@ -513,11 +508,7 @@ function renderUnitScreen(){
       return '<div class="card tapopt" data-action="open-sheet" data-id="'+attr(s.id)+'" style="padding:15px 16px;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
           '<div style="font-size:16px;font-weight:700;">ครั้งที่ '+(s.round||1)+'</div>' +
-          '<div style="display:flex;align-items:center;gap:12px;">' +
-            '<span class="tag '+mm.tag+'">'+esc(mm.label)+'</span>' +
-            '<span class="tapopt" data-action="open-overlay-sheet" data-mode="edit" data-id="'+attr(s.id)+'" style="color:var(--fg-2);display:inline-flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'+IC_EDIT+'</svg></span>' +
-            '<span class="tapopt" data-action="remove-sheet" data-id="'+attr(s.id)+'" style="color:var(--fg-3);display:inline-flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"></path></svg></span>' +
-          '</div></div>' +
+          '<span class="tag '+mm.tag+'">'+esc(mm.label)+'</span></div>' +
         '<div style="font-size:12.5px;color:var(--fg-2);margin-top:4px;">'+(s.date?esc(s.date):'ยังไม่ระบุวันที่')+(s.inspector?' · ผู้ตรวจ '+esc(s.inspector):'')+'</div>' +
         '<div style="display:flex;align-items:center;gap:12px;margin-top:11px;font-size:13px;">' +
           '<span style="color:var(--fg-2);">defect <b style="color:var(--fg-1);">'+ds.length+'</b></span>' +
@@ -553,7 +544,7 @@ function defectListHtml(S){
     var thumbAttr = hasPhoto ? ' data-lazy-photo="'+attr(d.photoIds[0])+'"' : '';
     var thumbInner = hasPhoto ? '' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.6"></circle><path d="m21 15-5-5L5 21"></path></svg>';
     var canUp = idx>0, canDown = idx<S.defects.length-1;
-    return '<div class="card tapopt" data-action="open-overlay-defect" data-mode="edit" data-id="'+attr(d.id)+'" style="overflow:hidden;display:flex;">' +
+    return '<div class="card" style="overflow:hidden;display:flex;">' +
       '<div class="thumb" style="width:80px;flex-shrink:0;"'+thumbAttr+'>'+thumbInner+'</div>' +
       '<div style="flex:1;padding:11px 13px;min-width:0;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
@@ -568,6 +559,7 @@ function defectListHtml(S){
           '<span style="margin-left:auto;display:flex;gap:10px;">' +
             '<span class="tapopt" data-action="move-defect" data-dir="up" data-id="'+attr(d.id)+'" style="color:'+(canUp?'var(--fg-2)':'var(--ap-neutral-400)')+';display:inline-flex;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span>' +
             '<span class="tapopt" data-action="move-defect" data-dir="down" data-id="'+attr(d.id)+'" style="color:'+(canDown?'var(--fg-2)':'var(--ap-neutral-400)')+';display:inline-flex;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"></path></svg></span>' +
+            '<span class="tapopt" data-action="open-overlay-defect" data-mode="edit" data-id="'+attr(d.id)+'" style="color:var(--fg-2);display:inline-flex;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'+IC_EDIT+'</svg></span>' +
             '<span class="tapopt" data-action="remove-defect" data-id="'+attr(d.id)+'" style="color:var(--fg-3);display:inline-flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"></path></svg></span>' +
           '</span></div></div></div>';
   }).join('') + '</div>';
@@ -592,7 +584,7 @@ function renderSheetScreen(){
   '</div>';
 
   var listLink = '<div class="card tapopt" data-action="open-deflist" style="padding:15px 16px;display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
-    '<span style="font-size:15px;font-weight:700;">รายการแก้ไขที่บันทึก</span>' +
+    '<span style="font-size:15px;font-weight:700;">รายการที่บันทึก</span>' +
     '<span style="font-size:13px;color:var(--fg-2);">('+counts.all+')</span>' +
     '<svg style="margin-left:auto;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2"><path d="M9 18l6-6-6-6"></path></svg></div>';
 
@@ -645,7 +637,7 @@ function renderDefectListScreen(){
         '<span class="tapopt back-link" data-action="back-sheet" style="flex:1;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+IC_BACK+'</svg><span>ครั้งที่ '+(S.round||1)+'</span></span>' +
         iconBtn('back-projects','',IC_HOME) +
       '</div>' +
-      '<h1 style="margin-top:12px;">รายการแก้ไขที่บันทึก</h1>' +
+      '<h1 style="margin-top:12px;">รายการที่บันทึก</h1>' +
       '<div class="sub">'+esc(U.code)+' · '+S.defects.length+' รายการ</div>' +
     '</div>' +
     '<div class="scroll" style="padding:16px;">' + defectListHtml(S) + '</div>' +
@@ -745,10 +737,10 @@ function renderDefectOverlay(){
   var isEdit = state.formMode==='edit';
   var P = findProject(state.curP), U = findUnit(P, state.curU), S = findSheet(U, state.curS);
   var D = isEdit ? findDefect(S, state.editId) : null;
-  var curCat = state.formCat, curSev = state.formSev, curRoom = state.formRoom, note = state.formNoteDraft||'';
-  var catChips = CATS.map(function(c){ return '<span class="chip tapopt'+(c.id===curCat?' is-active':'')+'" data-group="cat" data-value="'+c.id+'" data-action="pick-chip">'+esc(c.name)+'</span>'; }).join('') + '<span class="chip tapopt" data-action="add-cat" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;">+ เพิ่มหมวด</span>';
+  var curCat = D?D.cat:state.formCat, curSev = D?D.sev:state.formSev, curRoom = D?D.room:state.formRoom, note = D?D.note:'';
+  var catChips = CATS.map(function(c){ return '<span class="chip tapopt'+(c.id===curCat?' is-active':'')+'" data-group="cat" data-value="'+c.id+'" data-action="pick-chip">'+esc(c.name)+'</span>'; }).join('');
   var sevChips = ['high','mid','low'].map(function(id){ return '<span class="sev-chip tapopt'+(id===curSev?' is-active':'')+'" data-group="sev" data-value="'+id+'" data-action="pick-chip">'+esc(SEV[id].name)+'</span>'; }).join('');
-  var roomChips = ROOMS.map(function(r){ return '<span class="chip tapopt'+(r===curRoom?' is-active':'')+'" data-group="room" data-value="'+attr(r)+'" data-action="pick-chip">'+esc(r)+'</span>'; }).join('') + '<span class="chip tapopt" data-action="add-room" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;">+ เพิ่มห้อง</span>';
+  var roomChips = ROOMS.map(function(r){ return '<span class="chip tapopt'+(r===curRoom?' is-active':'')+'" data-group="room" data-value="'+attr(r)+'" data-action="pick-chip">'+esc(r)+'</span>'; }).join('');
   return '<div class="overlay-backdrop tapopt" data-action="close-overlay"></div>' +
   '<div class="overlay-sheet" id="defect-overlay"><div class="sheet-grabber"></div>' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
@@ -834,12 +826,11 @@ function openUnitOverlay(mode,id){ state.overlay='unit'; state.formMode=mode; st
 function openSheetOverlay(mode,id){ state.overlay='sheet'; state.formMode=mode; state.editId=id||null; if(mode!=='edit') state.formSheetMode='handover'; render(); }
 function openDefectOverlay(mode,id){
   state.overlay='defect'; state.formMode=mode; state.editId=id||null;
-  state.formCat=CATS[0].id; state.formSev='mid'; state.formRoom=ROOMS[0]; state.formNoteDraft='';
+  state.formCat=CATS[0].id; state.formSev='mid'; state.formRoom=ROOMS[0];
   if (mode==='edit'){
     var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS),D=findDefect(S,id);
     pendingPhotos=[]; pendingPhotosAfter=[];
     if (D){
-      state.formCat=D.cat; state.formSev=D.sev; state.formRoom=D.room; state.formNoteDraft=D.note||'';
       function loadSet(ids){ return Promise.all((ids||[]).map(function(pid){ return Photos.get(pid).then(function(url){ return {url:url,photoId:pid}; }); })); }
       Promise.all([loadSet(D.photoIds), loadSet(D.photoIdsAfter)]).then(function(res){
         pendingPhotos=res[0].filter(function(x){return x.url;});
@@ -927,35 +918,6 @@ function removeDefect(did){
   var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS); if(!S) return;
   var D=findDefect(S,did); if(D){ (D.photoIds||[]).forEach(function(id){ Photos.del(id); }); (D.photoIdsAfter||[]).forEach(function(id){ Photos.del(id); }); }
   S.defects=S.defects.filter(function(d){ return d.id!==did; }); persist(); render();
-}
-function removeSheet(sid){
-  var P=findProject(state.curP),U=findUnit(P,state.curU); if(!U) return;
-  var S=findSheet(U,sid);
-  if(S){ (S.defects||[]).forEach(function(d){ (d.photoIds||[]).forEach(function(id){ Photos.del(id); }); (d.photoIdsAfter||[]).forEach(function(id){ Photos.del(id); }); }); }
-  U.sheets=U.sheets.filter(function(s){ return s.id!==sid; }); persist(); state.screen='unit'; state.curS=null; render();
-}
-function captureDefectForm(){
-  var c=document.querySelector('#defect-overlay [data-group="cat"].is-active');
-  var s=document.querySelector('#defect-overlay [data-group="sev"].is-active');
-  var r=document.querySelector('#defect-overlay [data-group="room"].is-active');
-  var n=document.getElementById('f-d-note');
-  if(c) state.formCat=c.getAttribute('data-value');
-  if(s) state.formSev=s.getAttribute('data-value');
-  if(r) state.formRoom=r.getAttribute('data-value');
-  if(n) state.formNoteDraft=n.value;
-}
-function addCategory(){
-  captureDefectForm();
-  var name=(window.prompt('ชื่อหมวดหมู่ใหม่')||'').trim(); if(!name) return;
-  var id='c'+uid(); CATS.push({id:id,name:name});
-  try{ var a=JSON.parse(localStorage.getItem(CAT_KEY)||'[]'); a.push({id:id,name:name}); localStorage.setItem(CAT_KEY,JSON.stringify(a)); }catch(e){}
-  state.formCat=id; render();
-}
-function addRoom(){
-  captureDefectForm();
-  var name=(window.prompt('ชื่อห้อง / พื้นที่ใหม่')||'').trim(); if(!name) return;
-  if(ROOMS.indexOf(name)<0){ ROOMS.push(name); try{ var a=JSON.parse(localStorage.getItem(ROOM_KEY)||'[]'); a.push(name); localStorage.setItem(ROOM_KEY,JSON.stringify(a)); }catch(e){} }
-  state.formRoom=name; render();
 }
 function moveDefect(did,dir){
   var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS); if(!S) return;
@@ -1122,9 +1084,6 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'cycle-status': cycleDefectStatus(el.getAttribute('data-id')); break;
     case 'remove-defect': if(window.confirm('ลบ defect นี้ใช่หรือไม่?')) removeDefect(el.getAttribute('data-id')); break;
     case 'move-defect': moveDefect(el.getAttribute('data-id'), el.getAttribute('data-dir')); break;
-    case 'remove-sheet': if(window.confirm('ลบใบงานตรวจนี้ทั้งหมดใช่หรือไม่? (ลบ defect และรูปทั้งหมดในใบงาน)')) removeSheet(el.getAttribute('data-id')); break;
-    case 'add-cat': addCategory(); break;
-    case 'add-room': addRoom(); break;
     case 'export-pdf': exportPDF(el.getAttribute('data-scope')); break;
     case 'trigger-camera': state.photoTarget=el.getAttribute('data-target')||'before'; document.getElementById('cam-input').click(); break;
     case 'trigger-gallery': state.photoTarget=el.getAttribute('data-target')||'before'; document.getElementById('gal-input').click(); break;
@@ -1141,7 +1100,7 @@ function registerPWA(){
 }
 
 /* ---------- boot ---------- */
-migrate().then(function(loaded){ projects = loaded || []; loadCustomLists(); render(); registerPWA(); });
+migrate().then(function(loaded){ projects = loaded || []; render(); registerPWA(); });
 </script>
 </body>
 </html>
