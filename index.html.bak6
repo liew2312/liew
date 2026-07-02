@@ -162,14 +162,6 @@ textarea.fld{ resize:none; line-height:1.45; }
 .empty-state{ text-align:center; padding:40px 24px; color:var(--fg-3); font-size:14px; line-height:1.6;
   border:1.5px dashed var(--border-default); border-radius:16px; background:rgba(255,255,255,.5); margin:6px 0; }
 .hidden-file-input{ position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
-.install-pop{ position:fixed; inset:0; z-index:200; display:flex; align-items:flex-end; justify-content:center; background:rgba(19,19,23,.42); padding:16px calc(16px + var(--safe-b)); }
-.install-pop[hidden]{ display:none; }
-.install-card{ width:100%; max-width:472px; background:#fff; border-radius:18px; box-shadow:var(--shadow-lg); padding:14px; display:flex; align-items:center; gap:12px; }
-.install-txt{ flex:1; min-width:0; display:flex; flex-direction:column; }
-.install-txt b{ font-size:14.5px; font-weight:700; }
-.install-txt span{ font-size:12px; color:var(--fg-2); line-height:1.4; margin-top:2px; }
-.install-btn{ background:var(--ap-red-600); color:#fff; border:none; border-radius:999px; padding:11px 18px; font-size:14px; font-weight:700; flex-shrink:0; }
-.install-x{ background:var(--ap-neutral-200); color:var(--fg-2); border:none; border-radius:999px; width:32px; height:32px; flex-shrink:0; font-size:15px; line-height:1; }
 
 @media print{ .app-shell{ display:none; } }
 </style>
@@ -192,7 +184,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v11 · 2 ก.ค. 2026';
+var APP_VERSION = 'v10 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -830,10 +822,9 @@ function renderSettingsOverlay(){
   '<div class="overlay-sheet" id="settings-overlay"><div class="sheet-grabber"></div>' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">' +
       '<span style="font-size:20px;font-weight:700;">ตั้งค่า</span>' + closeX + '</div>' +
-    '<div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">' +
+    '<div class="card" style="padding:14px 16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">' +
       '<span style="font-size:14px;color:var(--fg-2);">เวอร์ชันแอป</span>' +
       '<b style="font-size:15px;font-variant-numeric:tabular-nums;">'+esc(APP_VERSION)+'</b></div>' +
-    (!isStandalone() ? '<button type="button" class="btn-primary tapopt" data-action="install-app" style="margin-bottom:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="5" y="2" width="14" height="20" rx="2"></rect><path d="M12 18h.01"></path></svg>ติดตั้งแอปลงหน้าจอ</button>' : '') +
     '<div style="font-size:15px;font-weight:700;margin-bottom:6px;">ข้อมูลสำรอง</div>' +
     '<div style="font-size:13px;color:var(--fg-2);line-height:1.55;margin-bottom:12px;">มี '+projects.length+' โครงการในเครื่อง · แนะนำให้สำรองข้อมูลเป็นไฟล์เก็บไว้ กันข้อมูลหายเมื่อเปลี่ยนเครื่อง ล้างเบราว์เซอร์ หรือถอนแอป</div>' +
     '<button type="button" class="btn-primary tapopt" data-action="export-backup"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3v12"></path><path d="m8 11 4 4 4-4"></path><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg>สำรองข้อมูล (ดาวน์โหลดไฟล์)</button>' +
@@ -1238,7 +1229,6 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'open-signature': openSignature(el.getAttribute('data-role')); break;
     case 'open-settings': openSettings(); break;
     case 'clear-cache': clearAppCache(); break;
-    case 'install-app': triggerInstall(); break;
     case 'export-backup': exportBackup(); break;
     case 'import-backup': document.getElementById('backup-input').click(); break;
     case 'clear-signature': if(sigPad) sigPad.clear(); break;
@@ -1272,50 +1262,8 @@ function registerPWA(){
   try { if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')) navigator.serviceWorker.register('sw.js').catch(function(){}); } catch(e){}
 }
 
-/* ---------- install to home screen ---------- */
-var deferredInstallPrompt = null;
-function isStandalone(){ try{ return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true; }catch(e){ return false; } }
-function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream; }
-function installDismissed(){ try{ return sessionStorage.getItem('ap_install_dismiss')==='1'; }catch(e){ return false; } }
-function hideInstallPop(){ var el=document.getElementById('install-pop'); if(el) el.hidden=true; }
-function showInstallPop(mode){
-  if(isStandalone() || installDismissed()) return;
-  var el=document.getElementById('install-pop');
-  if(!el){ el=document.createElement('div'); el.id='install-pop'; el.className='install-pop'; el.hidden=true; document.body.appendChild(el); }
-  var icon='<img src="icon-192.png" alt="" style="width:48px;height:48px;border-radius:13px;flex-shrink:0;">';
-  var shareIcon='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M12 3v13"></path><path d="m8 7 4-4 4 4"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg>';
-  if(mode==='ios'){
-    el.innerHTML='<div class="install-card">'+icon+
-      '<div class="install-txt"><b>ติดตั้งแอปลงหน้าจอ</b><span>กดปุ่มแชร์ '+shareIcon+' ที่แถบล่างของ Safari แล้วเลือก “เพิ่มไปยังหน้าจอโฮม”</span></div>'+
-      '<button class="install-x" data-ipop="close">&times;</button></div>';
-  } else {
-    el.innerHTML='<div class="install-card">'+icon+
-      '<div class="install-txt"><b>ติดตั้งแอปตรวจบ้าน AP</b><span>เพิ่มลงหน้าจอโฮม เปิดใช้งานเต็มจอเหมือนแอป</span></div>'+
-      '<button class="install-btn" data-ipop="install">ติดตั้ง</button>'+
-      '<button class="install-x" data-ipop="close">&times;</button></div>';
-  }
-  el.hidden=false;
-}
-function triggerInstall(){
-  if(deferredInstallPrompt){ deferredInstallPrompt.prompt(); deferredInstallPrompt.userChoice.then(function(){ deferredInstallPrompt=null; }).catch(function(){ deferredInstallPrompt=null; }); }
-  else if(isIOS()){ showInstallPop('ios'); }
-  else { window.alert('เปิดเมนูเบราว์เซอร์ (⋮) แล้วเลือก “ติดตั้งแอป” หรือ “เพิ่มลงหน้าจอโฮม”'); }
-}
-function setupInstall(){
-  if(isStandalone()) return;
-  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferredInstallPrompt=e; showInstallPop('android'); });
-  window.addEventListener('appinstalled', function(){ hideInstallPop(); deferredInstallPrompt=null; });
-  if(isIOS() && !installDismissed()){ setTimeout(function(){ showInstallPop('ios'); }, 900); }
-}
-document.addEventListener('click', function(e){
-  var b=e.target.closest('[data-ipop]'); if(!b) return;
-  var act=b.getAttribute('data-ipop');
-  if(act==='close'){ try{ sessionStorage.setItem('ap_install_dismiss','1'); }catch(err){} hideInstallPop(); }
-  else if(act==='install'){ hideInstallPop(); triggerInstall(); }
-});
-
 /* ---------- boot ---------- */
-migrate().then(function(loaded){ projects = loaded || []; loadCustomLists(); render(); registerPWA(); setupInstall(); });
+migrate().then(function(loaded){ projects = loaded || []; loadCustomLists(); render(); registerPWA(); });
 </script>
 </body>
 </html>
