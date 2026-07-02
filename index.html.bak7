@@ -105,8 +105,9 @@ textarea.fld{ resize:none; line-height:1.45; }
 .chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
 
 .sev-chip{ flex:1; text-align:center; font-size:13px; font-weight:600; padding:11px 4px; border-radius:12px; background:#fff; border:1.5px solid var(--border-default); color:var(--fg-2); }
-.sev-chip.is-active[data-value="major"]{ background:var(--ap-red-50); color:var(--ap-red-600); border-color:var(--ap-red-600); }
-.sev-chip.is-active[data-value="minor"]{ background:var(--warning-bg); color:var(--warning); border-color:var(--warning); }
+.sev-chip.is-active[data-value="high"]{ background:var(--ap-red-50); color:var(--ap-red-600); border-color:var(--ap-red-600); }
+.sev-chip.is-active[data-value="mid"]{ background:var(--warning-bg); color:var(--warning); border-color:var(--warning); }
+.sev-chip.is-active[data-value="low"]{ background:var(--ap-neutral-200); color:var(--fg-2); border-color:var(--ap-neutral-500); }
 .st-chip{ flex:1; text-align:center; font-size:13px; font-weight:600; padding:11px 4px; border-radius:12px; background:#fff; border:1.5px solid var(--border-default); color:var(--fg-2); }
 .st-chip.is-active[data-value="open"]{ background:var(--ap-red-50); color:var(--ap-red-600); border-color:var(--ap-red-600); }
 .st-chip.is-active[data-value="prog"]{ background:var(--warning-bg); color:var(--warning); border-color:var(--warning); }
@@ -191,21 +192,17 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v12 · 2 ก.ค. 2026';
+var APP_VERSION = 'v11 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
   { id:'plumb', name:'ประปา' }, { id:'door', name:'ประตู-หน้าต่าง' }, { id:'wood', name:'งานไม้' }, { id:'ceil', name:'ฝ้า/ผนัง' },
 ];
 var SEV = {
-  major:{ name:'Major', color:'#921C1E' },
-  minor:{ name:'Minor', color:'#9B6612' },
-  high:{ name:'Major', color:'#921C1E' },
-  mid:{ name:'Minor', color:'#9B6612' },
-  low:{ name:'Minor', color:'#9B6612' }
+  high:{ name:'ร้ายแรง', color:'#921C1E' },
+  mid:  { name:'ปานกลาง', color:'#9B6612' },
+  low:  { name:'เล็กน้อย', color:'#4A4A52' },
 };
-var SEV_ORDER = ['major','minor'];
-function normSev(id){ return (id==='major'||id==='high') ? 'major' : 'minor'; }
 var STATUS = {
   open:{ name:'รอแก้', color:'#921C1E', bg:'#FAEBEB' },
   prog:{ name:'กำลังแก้', color:'#9B6612', bg:'#F6ECD6' },
@@ -393,7 +390,7 @@ var state = {
   overlay:null,              /* null | project | unit | sheet | defect | signature */
   formMode:'add', editId:null,
   formType:TYPES[0], formSheetMode:'handover',
-  formCat:CATS[0].id, formSev:'minor', formRoom:ROOMS[0],
+  formCat:CATS[0].id, formSev:'mid', formRoom:ROOMS[0],
   sigRole:'se', photoTarget:'before', formNoteDraft:'', formStatus:'open',
 };
 
@@ -799,7 +796,7 @@ function renderDefectOverlay(){
   var D = isEdit ? findDefect(S, state.editId) : null;
   var curCat = state.formCat, curSev = state.formSev, curRoom = state.formRoom, curStatus = state.formStatus||'open', note = state.formNoteDraft||'';
   var catChips = CATS.map(function(c){ return '<span class="chip tapopt'+(c.id===curCat?' is-active':'')+'" data-group="cat" data-value="'+c.id+'" data-action="pick-chip">'+esc(c.name)+'</span>'; }).join('') + '<span class="chip tapopt" data-action="add-cat" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;">+ เพิ่มหมวด</span>';
-  var sevChips = SEV_ORDER.map(function(id){ return '<span class="sev-chip tapopt'+(id===curSev?' is-active':'')+'" data-group="sev" data-value="'+id+'" data-action="pick-chip">'+esc(SEV[id].name)+'</span>'; }).join('');
+  var sevChips = ['high','mid','low'].map(function(id){ return '<span class="sev-chip tapopt'+(id===curSev?' is-active':'')+'" data-group="sev" data-value="'+id+'" data-action="pick-chip">'+esc(SEV[id].name)+'</span>'; }).join('');
   var stChips = STATUS_ORDER.map(function(id){ return '<span class="st-chip tapopt'+(id===curStatus?' is-active':'')+'" data-group="status" data-value="'+id+'" data-action="pick-chip">'+esc(STATUS[id].name)+'</span>'; }).join('');
   var roomChips = ROOMS.map(function(r){ return '<span class="chip tapopt'+(r===curRoom?' is-active':'')+'" data-group="room" data-value="'+attr(r)+'" data-action="pick-chip">'+esc(r)+'</span>'; }).join('') + '<span class="chip tapopt" data-action="add-room" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;">+ เพิ่มห้อง</span>';
   return '<div class="overlay-backdrop tapopt" data-action="close-overlay"></div>' +
@@ -907,12 +904,12 @@ function openUnitOverlay(mode,id){ state.overlay='unit'; state.formMode=mode; st
 function openSheetOverlay(mode,id){ state.overlay='sheet'; state.formMode=mode; state.editId=id||null; if(mode!=='edit') state.formSheetMode='handover'; render(); }
 function openDefectOverlay(mode,id){
   state.overlay='defect'; state.formMode=mode; state.editId=id||null;
-  state.formCat=CATS[0].id; state.formSev='minor'; state.formRoom=ROOMS[0]; state.formNoteDraft=''; state.formStatus='open';
+  state.formCat=CATS[0].id; state.formSev='mid'; state.formRoom=ROOMS[0]; state.formNoteDraft=''; state.formStatus='open';
   if (mode==='edit'){
     var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS),D=findDefect(S,id);
     pendingPhotos=[]; pendingPhotosAfter=[];
     if (D){
-      state.formCat=D.cat; state.formSev=normSev(D.sev); state.formRoom=D.room; state.formNoteDraft=D.note||''; state.formStatus=D.status||'open';
+      state.formCat=D.cat; state.formSev=D.sev; state.formRoom=D.room; state.formNoteDraft=D.note||''; state.formStatus=D.status||'open';
       function loadSet(ids){ return Promise.all((ids||[]).map(function(pid){ return Photos.get(pid).then(function(url){ return {url:url,photoId:pid}; }); })); }
       Promise.all([loadSet(D.photoIds), loadSet(D.photoIdsAfter)]).then(function(res){
         pendingPhotos=res[0].filter(function(x){return x.url;});
@@ -1018,7 +1015,7 @@ function submitDefectForm(){
   var statusChip=document.querySelector('#defect-overlay [data-group="status"].is-active');
   var note=document.getElementById('f-d-note').value.trim() || '(ไม่มีรายละเอียด)';
   var cat=catChip?catChip.getAttribute('data-value'):CATS[0].id;
-  var sev=sevChip?sevChip.getAttribute('data-value'):'minor';
+  var sev=sevChip?sevChip.getAttribute('data-value'):'mid';
   var room=roomChip?roomChip.getAttribute('data-value'):ROOMS[0];
   var status=statusChip?statusChip.getAttribute('data-value'):'open';
   var now=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
@@ -1107,14 +1104,13 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap){
   };
   function photoCell(ids){
     if(!ids||!ids.length) return '<span class="noimg">—</span>';
-    var u=urlMap.get(ids[0]);
-    var img = u ? '<img src="'+u+'" class="pimg">' : '<span class="noimg">—</span>';
-    var more = ids.length>1 ? '<span class="pmore">+'+(ids.length-1)+'</span>' : '';
-    return '<div class="pcell">'+img+more+'</div>';
+    var shown = ids.slice(0,2).map(function(id){ var u=urlMap.get(id); return u?'<img src="'+u+'" class="pimg">':''; }).join('');
+    var more = ids.length>2 ? '<div class="pmore">+'+(ids.length-2)+' รูป</div>' : '';
+    return '<div class="pcell">'+shown+more+'</div>';
   }
   function sevSummary(ds){
-    var c={major:0,minor:0}; ds.forEach(function(d){ c[normSev(d.sev)]++; });
-    var parts=[]; if(c.major) parts.push('Major '+c.major); if(c.minor) parts.push('Minor '+c.minor);
+    var c={high:0,mid:0,low:0}; ds.forEach(function(d){ if(c[d.sev]!=null) c[d.sev]++; });
+    var parts=[]; if(c.high) parts.push('ร้ายแรง '+c.high); if(c.mid) parts.push('ปานกลาง '+c.mid); if(c.low) parts.push('เล็กน้อย '+c.low);
     return parts.length?' ('+parts.join(' · ')+')':'';
   }
   function infoItem(label, val, big){
@@ -1193,9 +1189,9 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap){
     'td{padding:8px;border:1px solid #D8D5CC;vertical-align:top;}td.c,th.c{text-align:center;}' +
     '.rm{font-weight:700;margin-bottom:4px;line-height:1.35;}.dt{color:#4A4A52;line-height:1.45;margin-bottom:4px;}.sv{font-size:10px;font-weight:700;}' +
     '.st{display:inline-block;font-weight:700;border-radius:6px;padding:3px 9px;font-size:11px;white-space:nowrap;}' +
-    '.pc{width:150px;padding:6px;vertical-align:middle;}.pcell{position:relative;}' +
-    '.pimg{width:100%;height:150px;object-fit:cover;border-radius:5px;border:1px solid #E0DDD4;display:block;}' +
-    '.pmore{position:absolute;right:6px;bottom:6px;background:rgba(19,19,23,.72);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;}.noimg{color:#C9C6BC;display:block;text-align:center;}' +
+    '.pc{width:150px;padding:6px;}.pcell{display:flex;flex-direction:column;gap:5px;align-items:center;}' +
+    '.pimg{width:100%;max-width:150px;height:auto;max-height:180px;object-fit:cover;border-radius:5px;border:1px solid #E0DDD4;display:block;}' +
+    '.pmore{font-size:10px;color:#4A4A52;font-weight:700;}.noimg{color:#C9C6BC;display:block;text-align:center;}' +
     '.signs{display:flex;gap:48px;margin-top:30px;page-break-inside:avoid;}.sbox{flex:1;text-align:center;}.sbox img{margin:0 auto 4px;}.sline{border-bottom:1px solid #131317;height:44px;margin-bottom:6px;}.srole{font-size:11px;color:#4A4A52;border-top:1px solid #131317;padding-top:5px;}' +
     '@media screen{body{background:#EAE8E2;}.wrap{max-width:900px;margin:22px auto;}.sheet{background:#fff;padding:30px 32px;margin-bottom:20px;box-shadow:0 8px 26px rgba(0,0,0,.14);}.ph{position:fixed;top:14px;right:14px;background:#921C1E;color:#fff;padding:11px 17px;border-radius:999px;font:600 13px sans-serif;cursor:pointer;border:0;z-index:9;}}' +
     '@media print{.ph{display:none;}}';
