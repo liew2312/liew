@@ -1,5 +1,5 @@
 /* Service worker — offline app shell for the AP SE inspection app */
-const CACHE = 'ap-inspect-v4';
+const CACHE = 'ap-inspect-v5';
 
 /* Must succeed for the app to work offline. */
 const CORE = [

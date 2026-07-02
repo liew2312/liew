@@ -464,8 +464,8 @@ function renderProjectScreen(){
       var openLabel = open>0 ? (open+' รอแก้') : (uds.length>0 ? 'ครบแล้ว' : 'ยังไม่ตรวจ');
       return '<div class="card tapopt" data-action="open-unit" data-id="'+attr(u.id)+'" style="padding:15px 16px;">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">' +
-          '<div style="min-width:0;"><div style="font-size:17px;font-weight:700;">'+esc(u.code)+'</div>' +
-          '<div style="font-size:13px;color:var(--fg-2);margin-top:1px;">'+esc(u.customer || 'ยังไม่ระบุลูกค้า')+'</div></div>' +
+          '<div style="min-width:0;"><div style="font-size:17px;font-weight:700;">'+(u.plot?'แปลง '+esc(u.plot)+' · ':'')+'บ้านเลขที่ '+esc(u.code)+'</div>' +
+          '<div style="font-size:13px;color:var(--fg-2);margin-top:1px;">'+(u.model?'แบบ '+esc(u.model)+' · ':'')+esc(u.customer || 'ยังไม่ระบุลูกค้า')+'</div></div>' +
           '<span class="tag tag-stock">'+unitSheetCount(u)+' ใบงาน</span>' +
         '</div>' +
         '<div style="display:flex;gap:16px;margin-top:12px;font-size:13px;">' +
@@ -522,8 +522,9 @@ function renderUnitScreen(){
         iconBtn('open-overlay-unit',' data-mode="edit" data-id="'+attr(U.id)+'"',IC_EDIT) +
         iconBtn('back-projects','',IC_HOME) +
       '</div>' +
-      '<h1>'+esc(U.code)+'</h1>' +
-      '<div class="sub">'+(U.plot?esc(U.plot)+' · ':'')+esc(U.customer || 'ยังไม่ระบุลูกค้า')+(U.note?' · '+esc(U.note):'')+'</div>' +
+      (U.plot?'<div style="font-size:14px;font-weight:700;color:var(--fg-2);margin-bottom:2px;">แปลง '+esc(U.plot)+'</div>':'') +
+      '<h1>บ้านเลขที่ '+esc(U.code)+'</h1>' +
+      '<div class="sub">'+(U.model?'แบบ '+esc(U.model)+' · ':'')+esc(U.customer || 'ยังไม่ระบุลูกค้า')+(U.note?' · '+esc(U.note):'')+'</div>' +
     '</div>' +
     '<div class="scroll" style="padding:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:12px;">ใบงานตรวจ ('+U.sheets.length+')</div>'+body+'</div>' +
     '<div class="bottom-bar">' +
@@ -618,8 +619,8 @@ function renderSheetScreen(){
       '<div class="sub">'+(S.date?esc(S.date):'ยังไม่ระบุวันที่')+(S.inspector?' · ผู้ตรวจ '+esc(S.inspector):'')+'</div>' +
     '</div>' +
     '<div class="scroll" style="padding:16px;">' +
+      '<button type="button" class="tapopt" data-action="export-pdf" data-scope="sheet" style="width:100%;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1.5px solid var(--ap-red-600);color:var(--ap-red-600);border-radius:12px;padding:14px;font-size:15px;font-weight:700;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+IC_PDF+'</svg>ส่งออกรายงาน PDF</button>' +
       summary + listLink + signHtml +
-      '<button type="button" class="tapopt" data-action="export-pdf" data-scope="sheet" style="width:100%;margin-top:24px;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1.5px solid var(--ap-red-600);color:var(--ap-red-600);border-radius:12px;padding:14px;font-size:15px;font-weight:700;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+IC_PDF+'</svg>ส่งออกรายงาน PDF</button>' +
     '</div>' +
     '<div class="bottom-bar">' +
       '<button type="button" class="btn-primary tapopt" data-action="open-overlay-defect" data-mode="add" style="flex:1;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>บันทึก defect</button>' +
@@ -675,6 +676,8 @@ function renderUnitOverlay(){
     '<input class="fld" id="f-u-plot" value="'+attr(U?U.plot||'':'')+'" placeholder="เช่น แปลง 00A01" style="margin-bottom:16px;">' +
     '<div class="field-label">บ้านเลขที่</div>' +
     '<input class="fld" id="f-u-code" value="'+attr(U?U.code:'')+'" placeholder="เช่น 9/14" style="margin-bottom:16px;">' +
+    '<div class="field-label">แบบบ้าน (ถ้ามี)</div>' +
+    '<input class="fld" id="f-u-model" value="'+attr(U?U.model||'':'')+'" placeholder="เช่น แบบ Grande" style="margin-bottom:16px;">' +
     '<div class="field-label">ชื่อลูกค้า (ถ้ามี)</div>' +
     '<input class="fld" id="f-u-customer" value="'+attr(U?U.customer||'':'')+'" placeholder="เช่น คุณสมชาย ใจดี" style="margin-bottom:16px;">' +
     '<div class="field-label">หมายเหตุ (ถ้ามี)</div>' +
@@ -856,10 +859,11 @@ function submitUnitForm(){
   var codeEl=document.getElementById('f-u-code'), code=codeEl.value.trim();
   if(!code){ codeEl.focus(); codeEl.style.borderColor='var(--ap-red-600)'; return; }
   var plot=(document.getElementById('f-u-plot')||{value:''}).value.trim();
+  var model=(document.getElementById('f-u-model')||{value:''}).value.trim();
   var customer=(document.getElementById('f-u-customer')||{value:''}).value.trim();
   var note=(document.getElementById('f-u-note')||{value:''}).value.trim();
-  if(state.formMode==='edit'){ var U=findUnit(P,state.editId); if(U){ U.code=code; U.plot=plot; U.customer=customer; U.note=note; } }
-  else { P.units.push({id:uid(),code:code,plot:plot,customer:customer,note:note,sheets:[],createdAt:Date.now()}); }
+  if(state.formMode==='edit'){ var U=findUnit(P,state.editId); if(U){ U.code=code; U.plot=plot; U.model=model; U.customer=customer; U.note=note; } }
+  else { P.units.push({id:uid(),code:code,plot:plot,model:model,customer:customer,note:note,sheets:[],createdAt:Date.now()}); }
   persist(); state.overlay=null; render();
 }
 function submitSheetForm(){
@@ -976,6 +980,7 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap){
       infoItem('ประเภทการตรวจ', mm.label) +
       infoItem('แปลง', U.plot, true) +
       infoItem('บ้านเลขที่', U.code, true) +
+      infoItem('แบบบ้าน', U.model) +
       infoItem('ลูกค้า', U.customer) +
       infoItem('เจ้าหน้าที่', S.inspector) +
       infoItem('จำนวน Defect', counts.all+' รายการ'+sevSummary(ds)) +
