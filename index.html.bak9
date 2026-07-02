@@ -186,16 +186,6 @@ textarea.fld{ resize:none; line-height:1.45; }
 .install-txt span{ font-size:12px; color:var(--fg-2); line-height:1.4; margin-top:2px; }
 .install-btn{ background:var(--ap-red-600); color:#fff; border:none; border-radius:999px; padding:11px 18px; font-size:14px; font-weight:700; flex-shrink:0; }
 .install-x{ background:var(--ap-neutral-200); color:var(--fg-2); border:none; border-radius:999px; width:32px; height:32px; flex-shrink:0; font-size:15px; line-height:1; }
-.reminder{ display:flex; align-items:center; gap:10px; background:var(--warning-bg); border:1px solid #E7D3A6; border-radius:14px; padding:11px 12px; margin-bottom:14px; }
-.reminder-btn{ background:var(--ap-red-600); color:#fff; border:none; border-radius:999px; padding:8px 15px; font-size:13px; font-weight:700; flex-shrink:0; }
-.unit-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px; }
-.unit-card{ padding:13px 13px; display:flex; flex-direction:column; gap:2px; min-height:120px; }
-.uc-plot{ font-size:15px; font-weight:800; color:var(--ap-red-700); letter-spacing:-.01em; }
-.uc-code{ font-size:14px; font-weight:700; }
-.uc-sub{ font-size:12px; color:var(--fg-2); margin-top:2px; line-height:1.35; flex:1; }
-.uc-foot{ display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:10px; flex-wrap:wrap; }
-.uc-badge{ font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; background:var(--info-bg); color:var(--info); white-space:nowrap; }
-.uc-open{ font-size:12px; font-weight:700; white-space:nowrap; }
 
 @media print{ .app-shell{ display:none; } }
 </style>
@@ -218,7 +208,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v16 · 2 ก.ค. 2026';
+var APP_VERSION = 'v14 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -413,8 +403,6 @@ var photoUrlCache = new Map();
 var pendingPhotos = [];      /* [{url, photoId|null}] "before" photos while the defect sheet is open */
 var pendingPhotosAfter = []; /* [{url, photoId|null}] "after fix" photos */
 var sigPad = null;           /* active signature pad controller */
-var dfQuery='', dfStatus='all', uQuery='';
-var BACKUP_KEY='ap_last_backup';
 
 var state = {
   screen: 'projects',        /* projects | project | unit | sheet | deflist */
@@ -463,8 +451,6 @@ function render(){
   hydrateLazyPhotos(root);
   if (state.overlay === 'signature') initSignaturePad();
   if (state.overlay === 'annotate') initAnnotator();
-  if (state.screen === 'deflist') initDefectFilter();
-  if (state.screen === 'project') initUnitFilter();
 }
 function hydrateLazyPhotos(container){
   container.querySelectorAll('[data-lazy-photo]').forEach(function(el){
@@ -534,7 +520,7 @@ function renderProjectsScreen(){
       '<div class="topbar-row"><div class="eyebrow" style="flex:1;">AP · วิศวกรโครงการ</div>' +
         iconBtn('open-settings','',IC_GEAR) + '</div>' +
       '<h1>โครงการของฉัน</h1></div>' +
-    '<div class="scroll" style="padding:16px;">'+backupReminderHtml()+body+'</div>' +
+    '<div class="scroll" style="padding:16px;">'+body+'</div>' +
     '<div class="bottom-bar"><button type="button" class="btn-primary tapopt" data-action="open-overlay-project" data-mode="add">' +
       '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>เพิ่มโครงการ</button></div>' +
   '</div>';
@@ -549,16 +535,18 @@ function renderProjectScreen(){
   if (!P.units.length){
     body = '<div class="empty-state">ยังไม่มีแปลง — กด “เพิ่มแปลง” ด้านล่าง</div>';
   } else {
-    body = '<div id="unit-cards" class="unit-grid">' + P.units.map(function(u){
+    body = '<div style="display:flex;flex-direction:column;gap:12px;">' + P.units.map(function(u){
       var uds = unitDefects(u), open = openOf(uds);
-      var st = uds.length===0 ? {t:'ยังไม่ตรวจ',c:'var(--fg-3)'} : (open>0 ? {t:open+' คงค้าง',c:'var(--ap-red-600)'} : {t:'ครบแล้ว',c:'var(--success)'});
-      return '<div class="card unit-card tapopt" data-ucard data-search="'+attr(((u.plot||'')+' '+u.code+' '+(u.model||'')+' '+(u.customer||'')).toLowerCase())+'" data-action="open-unit" data-id="'+attr(u.id)+'">' +
-        (u.plot?'<div class="uc-plot">แปลง '+esc(u.plot)+'</div>':'') +
-        '<div class="uc-code">บ้านเลขที่ '+esc(u.code)+'</div>' +
-        '<div class="uc-sub">'+(u.model?'แบบ '+esc(u.model)+' · ':'')+esc(u.customer || 'ยังไม่ระบุลูกค้า')+'</div>' +
-        '<div class="uc-foot"><span class="uc-badge">'+unitSheetCount(u)+' ใบงาน</span>' +
-          '<span class="uc-open" style="color:'+st.c+';">'+esc(st.t)+'</span></div>' +
-      '</div>';
+      var openLabel = open>0 ? (open+' รอแก้') : (uds.length>0 ? 'ครบแล้ว' : 'ยังไม่ตรวจ');
+      return '<div class="card tapopt" data-action="open-unit" data-id="'+attr(u.id)+'" style="padding:15px 16px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">' +
+          '<div style="min-width:0;"><div style="font-size:17px;font-weight:700;">'+(u.plot?'แปลง '+esc(u.plot)+' · ':'')+'บ้านเลขที่ '+esc(u.code)+'</div>' +
+          '<div style="font-size:13px;color:var(--fg-2);margin-top:1px;">'+(u.model?'แบบ '+esc(u.model)+' · ':'')+esc(u.customer || 'ยังไม่ระบุลูกค้า')+'</div></div>' +
+          '<span class="tag tag-stock">'+unitSheetCount(u)+' ใบงาน</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:16px;margin-top:12px;font-size:13px;">' +
+          '<span style="color:var(--fg-2);">defect <b style="color:var(--fg-1);">'+uds.length+'</b></span>' +
+          '<span style="color:var(--ap-red-600);font-weight:600;">'+esc(openLabel)+'</span></div></div>';
     }).join('') + '</div>';
   }
   var detailsHtml = P.details ? '<div class="sub" style="margin-top:6px;">'+esc(P.details)+'</div>' : '';
@@ -577,7 +565,7 @@ function renderProjectScreen(){
         '<div class="stat stat-green"><b>'+progressOf(ds)+'%</b><span>คืบหน้า</span></div>' +
       '</div>' +
     '</div>' +
-    '<div class="scroll" style="padding:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:12px;">แปลง / บ้าน</div>'+(P.units.length>0?'<input class="fld" id="unit-search" placeholder="ค้นหาแปลง / บ้านเลขที่ / ลูกค้า" value="'+attr(uQuery)+'" style="margin-bottom:12px;">':'')+body+'</div>' +
+    '<div class="scroll" style="padding:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:12px;">แปลง / บ้าน</div>'+body+'</div>' +
     '<div class="bottom-bar">' +
       '<button type="button" class="btn-primary tapopt" data-action="open-overlay-unit" data-mode="add"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>เพิ่มแปลง</button>' +
     '</div></div>';
@@ -636,7 +624,7 @@ function defectListHtml(S){
     var thumbAttr = hasPhoto ? ' data-lazy-photo="'+attr(d.photoIds[0])+'"' : '';
     var thumbInner = hasPhoto ? '' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.6"></circle><path d="m21 15-5-5L5 21"></path></svg>';
     var canUp = idx>0, canDown = idx<S.defects.length-1;
-    return '<div class="card tapopt" data-dcard data-status="'+attr(d.status)+'" data-search="'+attr((d.room+' '+catName(d.cat)+' '+(d.note||'')).toLowerCase())+'" data-action="open-overlay-defect" data-mode="edit" data-id="'+attr(d.id)+'" style="overflow:hidden;display:flex;">' +
+    return '<div class="card tapopt" data-action="open-overlay-defect" data-mode="edit" data-id="'+attr(d.id)+'" style="overflow:hidden;display:flex;">' +
       '<div class="thumb" style="width:80px;flex-shrink:0;"'+thumbAttr+'>'+thumbInner+'</div>' +
       '<div style="flex:1;padding:11px 13px;min-width:0;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
@@ -731,16 +719,7 @@ function renderDefectListScreen(){
       '<h1 style="margin-top:12px;">รายการแก้ไขที่บันทึก</h1>' +
       '<div class="sub">'+esc(U.code)+' · '+S.defects.length+' รายการ</div>' +
     '</div>' +
-    '<div class="scroll" style="padding:16px;">' +
-      (S.defects.length ? (
-        '<input class="fld" id="deflist-search" placeholder="ค้นหา หมวด / ห้อง / รายละเอียด" value="'+attr(dfQuery)+'" style="margin-bottom:10px;">' +
-        '<div class="chip-row" style="margin-bottom:14px;">' +
-          ['all','open','prog','done'].map(function(k){ var nm={all:'ทั้งหมด',open:'รอแก้',prog:'กำลังแก้',done:'แก้แล้ว'}[k]; return '<span class="chip tapopt'+(dfStatus===k?' is-active':'')+'" data-dfilter="'+k+'">'+nm+'</span>'; }).join('') +
-        '</div>'
-      ) : '') +
-      '<div id="deflist-cards">' + defectListHtml(S) + '</div>' +
-      '<div id="deflist-empty" class="empty-state" style="display:none;">ไม่พบรายการที่ค้นหา</div>' +
-    '</div>' +
+    '<div class="scroll" style="padding:16px;">' + defectListHtml(S) + '</div>' +
     '<div class="bottom-bar">' +
       '<button type="button" class="btn-primary tapopt" data-action="open-overlay-defect" data-mode="add" style="flex:1;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>บันทึก defect</button>' +
     '</div></div>';
@@ -975,47 +954,6 @@ function openAnnotate(target, idx){
   state.overlay='annotate'; annotator=null; render();
 }
 function closeAnnotate(){ state.overlay='defect'; annotator=null; render(); }
-function backupReminderHtml(){
-  if(!projects.length) return '';
-  try{ if(sessionStorage.getItem('ap_backup_dismiss')==='1') return ''; }catch(e){}
-  var last=null; try{ last=parseInt(localStorage.getItem(BACKUP_KEY)||'',10); }catch(e){}
-  if(last && !isNaN(last) && (Date.now()-last) < 7*864e5) return '';
-  var days = (last && !isNaN(last)) ? Math.floor((Date.now()-last)/864e5) : null;
-  var msg = (days!=null) ? ('สำรองข้อมูลล่าสุด '+days+' วันที่แล้ว') : 'ยังไม่เคยสำรองข้อมูล';
-  return '<div class="reminder">' +
-    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9B6612" stroke-width="1.9" style="flex-shrink:0;"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"></path></svg>' +
-    '<div style="flex:1;min-width:0;"><b style="font-size:13.5px;">'+msg+'</b><div style="font-size:12px;color:var(--fg-2);">แนะนำให้สำรองเป็นไฟล์เก็บไว้ กันข้อมูลหาย</div></div>' +
-    '<button type="button" class="reminder-btn tapopt" data-action="export-backup">สำรอง</button>' +
-    '<span class="tapopt" data-action="dismiss-backup" style="color:var(--fg-3);padding:2px 4px;">&times;</span>' +
-  '</div>';
-}
-function initDefectFilter(){
-  var box=document.getElementById('deflist-search');
-  if(box){ box.oninput=function(){ dfQuery=box.value; applyDefectFilter(); }; }
-  document.querySelectorAll('[data-dfilter]').forEach(function(el){ el.onclick=function(){ dfStatus=el.getAttribute('data-dfilter'); document.querySelectorAll('[data-dfilter]').forEach(function(x){ x.classList.toggle('is-active', x===el); }); applyDefectFilter(); }; });
-  applyDefectFilter();
-}
-function applyDefectFilter(){
-  var wrap=document.getElementById('deflist-cards'); if(!wrap) return;
-  var q=(dfQuery||'').trim().toLowerCase(), any=false;
-  wrap.querySelectorAll('[data-dcard]').forEach(function(el){
-    var okS = dfStatus==='all' || el.getAttribute('data-status')===dfStatus;
-    var okQ = !q || (el.getAttribute('data-search')||'').indexOf(q)>=0;
-    var show = okS && okQ; el.style.display = show?'':'none'; if(show) any=true;
-  });
-  var em=document.getElementById('deflist-empty'); if(em) em.style.display=any?'none':'';
-}
-function initUnitFilter(){
-  var box=document.getElementById('unit-search');
-  if(box){ box.oninput=function(){ uQuery=box.value; applyUnitFilter(); }; applyUnitFilter(); }
-}
-function applyUnitFilter(){
-  var wrap=document.getElementById('unit-cards'); if(!wrap) return;
-  var q=(uQuery||'').trim().toLowerCase();
-  wrap.querySelectorAll('[data-ucard]').forEach(function(el){
-    el.style.display = (!q || (el.getAttribute('data-search')||'').indexOf(q)>=0) ? '' : 'none';
-  });
-}
 function renderAnnotateOverlay(){
   function tb(t,svg){ return '<button type="button" class="ann-tool'+(t==='pen'?' is-active':'')+'" data-anntool="'+t+'">'+svg+'</button>'; }
   var pen='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+IC_EDIT+'</svg>';
@@ -1106,7 +1044,6 @@ function exportBackup(){
     var d=new Date(), pad=function(n){ return (n<10?'0':'')+n; };
     a.href=url; a.download='ap-inspect-backup-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    try{ localStorage.setItem(BACKUP_KEY, String(Date.now())); }catch(e){}
     setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
   });
 }
@@ -1399,7 +1336,6 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'clear-cache': clearAppCache(); break;
     case 'install-app': triggerInstall(); break;
     case 'export-backup': exportBackup(); break;
-    case 'dismiss-backup': try{ sessionStorage.setItem('ap_backup_dismiss','1'); }catch(e){} render(); break;
     case 'import-backup': document.getElementById('backup-input').click(); break;
     case 'clear-signature': if(sigPad) sigPad.clear(); break;
     case 'remove-signature': removeSignature(el.getAttribute('data-role')); break;
