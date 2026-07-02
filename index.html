@@ -218,7 +218,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v16 · 2 ก.ค. 2026';
+var APP_VERSION = 'v17 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -610,12 +610,12 @@ function renderUnitScreen(){
   return '<div class="screen">' +
     '<div class="topbar">' +
       '<div class="topbar-row">' +
-        '<span class="tapopt back-link" data-action="back-project" style="flex:1;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+IC_BACK+'</svg><span>'+esc(P.name)+'</span></span>' +
+        '<span class="tapopt back-link" data-action="back-project" style="flex:1;font-size:19px;font-weight:700;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_BACK+'</svg><span>'+esc(P.name)+'</span></span>' +
         iconBtn('open-overlay-unit',' data-mode="edit" data-id="'+attr(U.id)+'"',IC_EDIT) +
         iconBtn('back-projects','',IC_HOME) +
       '</div>' +
-      (U.plot?'<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.92);margin-bottom:2px;">แปลง '+esc(U.plot)+'</div>':'') +
-      '<h1>บ้านเลขที่ '+esc(U.code)+'</h1>' +
+      (U.plot?'<div style="font-size:23px;font-weight:800;color:#fff;margin-bottom:2px;line-height:1.12;">แปลง '+esc(U.plot)+'</div>':'') +
+      '<h1 style="font-size:23px;margin-top:4px;">บ้านเลขที่ '+esc(U.code)+'</h1>' +
       '<div class="sub">'+(U.model?'แบบ '+esc(U.model)+' · ':'')+esc(U.customer || 'ยังไม่ระบุลูกค้า')+(U.note?' · '+esc(U.note):'')+'</div>' +
     '</div>' +
     '<div class="scroll" style="padding:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:12px;">ใบงานตรวจ ('+U.sheets.length+')</div>'+body+'</div>' +
