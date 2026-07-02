@@ -356,7 +356,6 @@ function modeMeta(mode){
     ? { label:'ปรับปรุง Stock', tag:'tag-stock', work:'งานปรับปรุงบ้าน Stock' }
     : { label:'ตรวจก่อนโอน', tag:'tag-handover', work:'งานส่งมอบลูกค้า' };
 }
-function secondSignerLabel(mode){ return mode==='stock' ? 'ผู้จัดการโครงการ (PM)' : 'ลูกค้า / ผู้รับมอบ'; }
 function catName(id){ var c = CATS.find(function(x){ return x.id===id; }); return c ? c.name : id; }
 
 /* counts */
@@ -523,7 +522,7 @@ function renderUnitScreen(){
         iconBtn('back-projects','',IC_HOME) +
       '</div>' +
       '<h1>'+esc(U.code)+'</h1>' +
-      '<div class="sub">'+(U.plot?esc(U.plot)+' · ':'')+esc(U.customer || 'ยังไม่ระบุลูกค้า')+(U.note?' · '+esc(U.note):'')+'</div>' +
+      '<div class="sub">'+esc(U.customer || 'ยังไม่ระบุลูกค้า')+(U.note?' · '+esc(U.note):'')+'</div>' +
     '</div>' +
     '<div class="scroll" style="padding:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:12px;">ใบงานตรวจ ('+U.sheets.length+')</div>'+body+'</div>' +
     '<div class="bottom-bar">' +
@@ -602,8 +601,8 @@ function renderSheetScreen(){
   }
   var signHtml = '<div style="font-size:15px;font-weight:700;margin:22px 0 12px;">ลายเซ็นกำกับใบงาน</div>' +
     '<div style="display:flex;flex-direction:column;gap:12px;">' +
-      sigSlot('se','ผู้ตรวจ (SE)', S.sigSE, S.sigSEName || S.inspector) +
-      sigSlot('cust', secondSignerLabel(S.mode), S.sigCust, S.sigCustName || (isHandover?U.customer:'')) +
+      sigSlot('se','ผู้จัดทำ / ลงชื่อ', S.sigSE, S.sigSEName || S.inspector) +
+      (isHandover ? sigSlot('cust','ลูกค้า / ผู้รับมอบ', S.sigCust, S.sigCustName || U.customer) : '') +
     '</div>';
 
   return '<div class="screen">' +
@@ -619,9 +618,9 @@ function renderSheetScreen(){
     '</div>' +
     '<div class="scroll" style="padding:16px;">' +
       summary + listLink + signHtml +
-      '<button type="button" class="tapopt" data-action="export-pdf" data-scope="sheet" style="width:100%;margin-top:24px;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1.5px solid var(--ap-red-600);color:var(--ap-red-600);border-radius:12px;padding:14px;font-size:15px;font-weight:700;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+IC_PDF+'</svg>ส่งออกรายงาน PDF</button>' +
     '</div>' +
     '<div class="bottom-bar">' +
+      '<button type="button" class="btn-outline-round tapopt" data-action="export-pdf" data-scope="sheet" title="ส่งออก PDF ใบงานนี้"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+IC_PDF+'</svg></button>' +
       '<button type="button" class="btn-primary tapopt" data-action="open-overlay-defect" data-mode="add" style="flex:1;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>บันทึก defect</button>' +
     '</div></div>';
 }
@@ -671,10 +670,8 @@ function renderUnitOverlay(){
   return '<div class="overlay-backdrop tapopt" data-action="close-overlay"></div>' +
   '<div class="overlay-sheet" id="unit-overlay"><div class="sheet-grabber"></div>' +
     '<div style="font-size:20px;font-weight:700;margin-bottom:18px;">'+(isEdit?'แก้ไขแปลง':'เพิ่มแปลง / บ้าน')+'</div>' +
-    '<div class="field-label">ชื่อแปลง</div>' +
-    '<input class="fld" id="f-u-plot" value="'+attr(U?U.plot||'':'')+'" placeholder="เช่น แปลง 00A01" style="margin-bottom:16px;">' +
-    '<div class="field-label">บ้านเลขที่</div>' +
-    '<input class="fld" id="f-u-code" value="'+attr(U?U.code:'')+'" placeholder="เช่น 9/14" style="margin-bottom:16px;">' +
+    '<div class="field-label">รหัสแปลง / บ้านเลขที่</div>' +
+    '<input class="fld" id="f-u-code" value="'+attr(U?U.code:'')+'" placeholder="เช่น แปลง 00B01 · บ้านเลขที่ 9/14" style="margin-bottom:16px;">' +
     '<div class="field-label">ชื่อลูกค้า (ถ้ามี)</div>' +
     '<input class="fld" id="f-u-customer" value="'+attr(U?U.customer||'':'')+'" placeholder="เช่น คุณสมชาย ใจดี" style="margin-bottom:16px;">' +
     '<div class="field-label">หมายเหตุ (ถ้ามี)</div>' +
@@ -763,8 +760,8 @@ function refreshPhotoStrip(){
 
 /* ---------- overlay: signature pad ---------- */
 function renderSignatureOverlay(){
+  var label = state.sigRole==='cust' ? 'ลายเซ็นลูกค้า / ผู้รับมอบ' : 'ลายเซ็นผู้ตรวจ (SE)';
   var P = findProject(state.curP), U = findUnit(P, state.curU), S = findSheet(U, state.curS);
-  var label = state.sigRole==='cust' ? ('ลายเซ็น'+secondSignerLabel(S.mode)) : 'ลายเซ็นผู้ตรวจ (SE)';
   var nameVal = state.sigRole==='cust' ? (S.sigCustName||U.customer||'') : (S.sigSEName||S.inspector||'');
   return '<div class="overlay-backdrop tapopt" data-action="close-overlay"></div>' +
   '<div class="overlay-sheet" id="signature-overlay"><div class="sheet-grabber"></div>' +
@@ -855,11 +852,10 @@ function submitUnitForm(){
   var P=findProject(state.curP);
   var codeEl=document.getElementById('f-u-code'), code=codeEl.value.trim();
   if(!code){ codeEl.focus(); codeEl.style.borderColor='var(--ap-red-600)'; return; }
-  var plot=(document.getElementById('f-u-plot')||{value:''}).value.trim();
   var customer=(document.getElementById('f-u-customer')||{value:''}).value.trim();
   var note=(document.getElementById('f-u-note')||{value:''}).value.trim();
-  if(state.formMode==='edit'){ var U=findUnit(P,state.editId); if(U){ U.code=code; U.plot=plot; U.customer=customer; U.note=note; } }
-  else { P.units.push({id:uid(),code:code,plot:plot,customer:customer,note:note,sheets:[],createdAt:Date.now()}); }
+  if(state.formMode==='edit'){ var U=findUnit(P,state.editId); if(U){ U.code=code; U.customer=customer; U.note=note; } }
+  else { P.units.push({id:uid(),code:code,customer:customer,note:note,sheets:[],createdAt:Date.now()}); }
   persist(); state.overlay=null; render();
 }
 function submitSheetForm(){
@@ -945,8 +941,8 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap){
     var parts=[]; if(c.high) parts.push('ร้ายแรง '+c.high); if(c.mid) parts.push('ปานกลาง '+c.mid); if(c.low) parts.push('เล็กน้อย '+c.low);
     return parts.length?' ('+parts.join(' · ')+')':'';
   }
-  function infoItem(label, val, big){
-    return '<div class="ii'+(big?' big':'')+'"><span>'+esc(label)+'</span><b>'+(val?esc(val):'<i class="blank"></i>')+'</b></div>';
+  function infoItem(label, val){
+    return '<div class="ii"><span>'+esc(label)+'</span><b>'+(val?esc(val):'<i class="blank"></i>')+'</b></div>';
   }
 
   var sections = sheets.map(function(S){
@@ -974,8 +970,7 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap){
       infoItem('วันที่ตรวจสอบ', (S.date||'—')+' (ครั้งที่ '+(S.round||1)+')') +
       infoItem('โครงการ', P.name) +
       infoItem('ประเภทการตรวจ', mm.label) +
-      infoItem('แปลง', U.plot, true) +
-      infoItem('บ้านเลขที่', U.code, true) +
+      infoItem('แปลง / บ้านเลขที่', U.code) +
       infoItem('ลูกค้า', U.customer) +
       infoItem('เจ้าหน้าที่', S.inspector) +
       infoItem('จำนวน Defect', counts.all+' รายการ'+sevSummary(ds)) +
@@ -988,8 +983,8 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap){
       var line = url ? '' : '<div class="sline"></div>';
       return '<div class="sbox">'+img+line+'<div class="srole">'+esc(role)+(name?' · '+esc(name):'')+'</div></div>';
     }
-    var signs = '<div class="signs">' + sbox(sigSE, S.sigSEName||S.inspector, 'ผู้ตรวจ (SE)') +
-      sbox(sigCust, S.sigCustName||(S.mode==='stock'?'':U.customer), secondSignerLabel(S.mode)) + '</div>';
+    var signs = '<div class="signs">' + sbox(sigSE, S.sigSEName||S.inspector, 'ลงชื่อ') +
+      (S.mode!=='stock' ? sbox(sigCust, S.sigCustName||U.customer, 'ลูกค้า / ผู้รับมอบ') : '') + '</div>';
 
     return '<section class="sheet">' +
       '<div class="rhead">'+stamp +
@@ -1013,7 +1008,6 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap){
     '.info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 22px;margin-bottom:16px;}' +
     '.ii span{font-size:10px;color:#70707A;margin-right:4px;}.ii b{font-size:12px;font-weight:600;}' +
     '.ii .blank{display:inline-block;width:120px;border-bottom:1px dotted #9C9CA4;height:12px;}' +
-    '.ii.big b{font-size:16px;font-weight:700;}.ii.big span{font-size:11px;}' +
     'table{width:100%;border-collapse:collapse;font-size:11px;}' +
     'thead{display:table-header-group;}tr{page-break-inside:avoid;}' +
     'th{background:#EDEBE4;color:#131317;padding:7px 8px;font-weight:700;border:1px solid #C9C6BC;text-align:left;}' +
