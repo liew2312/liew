@@ -126,12 +126,17 @@ textarea.fld{ resize:none; line-height:1.45; }
 .mode-card.is-active[data-value="stock"] .dot{ border-color:var(--ap-ink-800); }
 .mode-card.is-active[data-value="stock"] .dot span{ background:var(--ap-ink-800); }
 .mode-card.is-active[data-value="stock"] .mode-title{ color:var(--ap-ink-800); }
+.mode-card.is-active[data-value="common"]{ border-color:var(--success); background:var(--success-bg); }
+.mode-card.is-active[data-value="common"] .dot{ border-color:var(--success); }
+.mode-card.is-active[data-value="common"] .dot span{ background:var(--success); }
+.mode-card.is-active[data-value="common"] .mode-title{ color:var(--success); }
 .mode-title{ font-size:15px; font-weight:700; color:var(--fg-1); }
 .mode-desc{ font-size:12.5px; color:var(--fg-2); margin-top:2px; line-height:1.4; }
 
 .tag{ font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; white-space:nowrap; }
 .tag-handover{ background:var(--ap-red-50); color:var(--ap-red-700); }
 .tag-stock{ background:var(--info-bg); color:var(--info); }
+.tag-common{ background:var(--success-bg); color:var(--success); }
 
 .btn-primary{ background:var(--ap-red-600); color:#fff; border-radius:999px; height:52px; display:flex; align-items:center; justify-content:center; gap:9px; font-size:16px; font-weight:600; box-shadow:var(--shadow-md); border:none; width:100%; }
 .btn-primary[disabled], .btn-primary.is-disabled{ background:var(--ap-neutral-400); box-shadow:none; }
@@ -218,7 +223,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v19 · 2 ก.ค. 2026';
+var APP_VERSION = 'v20 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -434,11 +439,14 @@ function findDefect(s, did){ return s ? (s.defects.find(function(d){ return d.id
 function persist(){ Store.save(projects); }
 
 function modeMeta(mode){
-  return mode === 'stock'
-    ? { label:'ปรับปรุง Stock', tag:'tag-stock', work:'งานปรับปรุงบ้าน Stock' }
-    : { label:'ตรวจก่อนโอน', tag:'tag-handover', work:'งานส่งมอบลูกค้า' };
+  var m={
+    stock:{ label:'ปรับปรุง Stock', tag:'tag-stock', work:'งานปรับปรุงบ้าน Stock' },
+    common:{ label:'งานส่วนกลาง', tag:'tag-common', work:'งานตรวจส่วนกลาง / สาธารณูปโภค' },
+    handover:{ label:'ตรวจก่อนโอน', tag:'tag-handover', work:'งานส่งมอบลูกค้า' }
+  };
+  return m[mode] || m.handover;
 }
-function secondSignerLabel(mode){ return mode==='stock' ? 'ผู้จัดการโครงการ (PM)' : 'ลูกค้า / ผู้รับมอบ'; }
+function secondSignerLabel(mode){ return mode==='stock' ? 'ผู้จัดการโครงการ (PM)' : (mode==='common' ? 'นิติบุคคล / ผู้รับมอบ' : 'ลูกค้า / ผู้รับมอบ'); }
 function sortedDefects(ds, mode){
   var arr=(ds||[]).slice();
   if(mode==='cat'){
@@ -705,7 +713,7 @@ function renderSheetScreen(){
   var signHtml = '<div style="font-size:15px;font-weight:700;margin:22px 0 12px;">ลายเซ็นกำกับใบงาน</div>' +
     '<div style="display:flex;flex-direction:column;gap:12px;">' +
       sigSlot('se','ผู้ตรวจ (SE)', S.sigSE, S.sigSEName || S.inspector) +
-      sigSlot('cust', secondSignerLabel(S.mode), S.sigCust, S.sigCustName || (isHandover?U.customer:'')) +
+      sigSlot('cust', secondSignerLabel(S.mode), S.sigCust, S.sigCustName || (S.mode==='handover'?U.customer:'')) +
     '</div>';
 
   return '<div class="screen">' +
@@ -809,6 +817,7 @@ function renderSheetOverlay(){
   var modeDefs = [
     { id:'handover', title:'ตรวจรับบ้านก่อนโอน', desc:'เดินตรวจพร้อมลูกค้า · มีลายเซ็นลูกค้ากำกับ' },
     { id:'stock', title:'ปรับปรุงบ้าน Stock', desc:'สำรวจบ้านคงคลังเพื่อทำรายการซ่อม/ปรับปรุง' },
+    { id:'common', title:'งานส่วนกลาง / สาธารณูปโภค', desc:'ตรวจพื้นที่ส่วนกลาง สโมสร สวน ถนน ระบบสาธารณูปโภค · ลงชื่อนิติบุคคล' },
   ];
   var modeCards = modeDefs.map(function(m){
     return '<div class="mode-card tapopt'+(m.id===curMode?' is-active':'')+'" data-group="mode" data-value="'+m.id+'" data-action="pick-chip">' +
@@ -1344,7 +1353,7 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap, sortMode){
       return '<div class="sbox">'+img+line+'<div class="srole">'+esc(role)+(name?' · '+esc(name):'')+'</div></div>';
     }
     var signs = '<div class="signs">' + sbox(sigSE, S.sigSEName||S.inspector, 'ผู้ตรวจ (SE)') +
-      sbox(sigCust, S.sigCustName||(S.mode==='stock'?'':U.customer), secondSignerLabel(S.mode)) + '</div>';
+      sbox(sigCust, S.sigCustName||(S.mode==='handover'?U.customer:''), secondSignerLabel(S.mode)) + '</div>';
 
     return '<section class="sheet">' +
       '<div class="rhead">'+stamp +
