@@ -223,7 +223,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v21 · 2 ก.ค. 2026';
+var APP_VERSION = 'v20 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -563,13 +563,11 @@ function renderProjectScreen(){
   var P = findProject(state.curP);
   if (!P){ state.screen='projects'; return renderProjectsScreen(); }
   var ds = projDefects(P);
-  var normalUnits = P.units.filter(function(u){ return u.kind!=='common'; });
-  var commonUnit = P.units.filter(function(u){ return u.kind==='common'; })[0];
   var body;
-  if (!normalUnits.length){
+  if (!P.units.length){
     body = '<div class="empty-state">ยังไม่มีแปลง — กด “เพิ่มแปลง” ด้านล่าง</div>';
   } else {
-    body = '<div id="unit-cards" class="unit-grid">' + normalUnits.map(function(u){
+    body = '<div id="unit-cards" class="unit-grid">' + P.units.map(function(u){
       var uds = unitDefects(u), open = openOf(uds);
       var st = uds.length===0 ? {t:'ยังไม่ตรวจ',c:'var(--fg-3)'} : (open>0 ? {t:open+' คงค้าง',c:'var(--ap-red-600)'} : {t:'ครบแล้ว',c:'var(--success)'});
       return '<div class="card unit-card tapopt" data-ucard data-search="'+attr(((u.plot||'')+' '+u.code+' '+(u.model||'')+' '+(u.customer||'')).toLowerCase())+'" data-action="open-unit" data-id="'+attr(u.id)+'">' +
@@ -582,13 +580,6 @@ function renderProjectScreen(){
     }).join('') + '</div>';
   }
   var detailsHtml = P.details ? '<div class="sub" style="margin-top:6px;">'+esc(P.details)+'</div>' : '';
-  var cds = commonUnit ? unitDefects(commonUnit) : [];
-  var cOpen = openOf(cds);
-  var cInfo = commonUnit ? (unitSheetCount(commonUnit)+' ใบงาน · defect '+cds.length+(cOpen?(' · '+cOpen+' คงค้าง'):'')) : 'ยังไม่มีใบงาน — แตะเพื่อเริ่ม';
-  var commonCard = '<div class="card tapopt" data-action="open-common" style="padding:14px 15px;display:flex;align-items:center;gap:12px;margin-bottom:16px;border:1px solid var(--success);background:var(--success-bg);">' +
-    '<span style="width:40px;height:40px;border-radius:11px;background:#fff;color:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 21h18"></path><path d="M5 21V8l7-5 7 5v13"></path><path d="M9 21v-6h6v6"></path></svg></span>' +
-    '<div style="flex:1;min-width:0;"><b style="font-size:15px;">งานส่วนกลาง / สาธารณูปโภค</b><div style="font-size:12.5px;color:var(--fg-2);margin-top:1px;">'+esc(cInfo)+'</div></div>' +
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>';
   return '<div class="screen">' +
     '<div class="topbar">' +
       '<div class="topbar-row">' +
@@ -599,12 +590,12 @@ function renderProjectScreen(){
       '<h1>'+esc(P.name)+'</h1>' +
       '<div class="sub">'+esc(P.type)+'</div>' + detailsHtml +
       '<div class="stat-row">' +
-        '<div class="stat stat-blue"><b>'+normalUnits.length+'</b><span>แปลง</span></div>' +
+        '<div class="stat stat-blue"><b>'+P.units.length+'</b><span>แปลง</span></div>' +
         '<div class="stat stat-red"><b>'+openOf(ds)+'</b><span>defect รอแก้</span></div>' +
         '<div class="stat stat-green"><b>'+progressOf(ds)+'%</b><span>คืบหน้า</span></div>' +
       '</div>' +
     '</div>' +
-    '<div class="scroll" style="padding:16px;">'+commonCard+'<div style="font-size:15px;font-weight:700;margin-bottom:12px;">แปลง / บ้าน</div>'+(normalUnits.length>0?'<input class="fld" id="unit-search" placeholder="ค้นหาแปลง / บ้านเลขที่ / ลูกค้า" value="'+attr(uQuery)+'" style="margin-bottom:12px;">':'')+body+'</div>' +
+    '<div class="scroll" style="padding:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:12px;">แปลง / บ้าน</div>'+(P.units.length>0?'<input class="fld" id="unit-search" placeholder="ค้นหาแปลง / บ้านเลขที่ / ลูกค้า" value="'+attr(uQuery)+'" style="margin-bottom:12px;">':'')+body+'</div>' +
     '<div class="bottom-bar">' +
       '<button type="button" class="btn-primary tapopt" data-action="open-overlay-unit" data-mode="add"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>เพิ่มแปลง</button>' +
     '</div></div>';
@@ -638,14 +629,12 @@ function renderUnitScreen(){
     '<div class="topbar">' +
       '<div class="topbar-row">' +
         '<span class="tapopt back-link" data-action="back-project" style="flex:1;font-size:22px;font-weight:700;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">'+IC_BACK+'</svg><span>'+esc(P.name)+'</span></span>' +
-        (U.kind==='common' ? '' : iconBtn('open-overlay-unit',' data-mode="edit" data-id="'+attr(U.id)+'"',IC_EDIT)) +
+        iconBtn('open-overlay-unit',' data-mode="edit" data-id="'+attr(U.id)+'"',IC_EDIT) +
         iconBtn('back-projects','',IC_HOME) +
       '</div>' +
-      (U.kind==='common'
-        ? '<h1 style="margin-top:6px;">งานส่วนกลาง / สาธารณูปโภค</h1><div class="sub">พื้นที่ส่วนกลาง · สโมสร · สวน · ถนน · ระบบสาธารณูปโภค</div>'
-        : ((U.plot?'<div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:2px;line-height:1.12;">แปลง '+esc(U.plot)+'</div>':'') +
-          '<h1 style="font-size:23px;margin-top:4px;">บ้านเลขที่ '+esc(U.code)+'</h1>' +
-          '<div class="sub">'+(U.model?'แบบ '+esc(U.model)+' · ':'')+esc(U.customer || 'ยังไม่ระบุลูกค้า')+(U.note?' · '+esc(U.note):'')+'</div>')) +
+      (U.plot?'<div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:2px;line-height:1.12;">แปลง '+esc(U.plot)+'</div>':'') +
+      '<h1 style="font-size:23px;margin-top:4px;">บ้านเลขที่ '+esc(U.code)+'</h1>' +
+      '<div class="sub">'+(U.model?'แบบ '+esc(U.model)+' · ':'')+esc(U.customer || 'ยังไม่ระบุลูกค้า')+(U.note?' · '+esc(U.note):'')+'</div>' +
     '</div>' +
     '<div class="scroll" style="padding:16px;"><div style="font-size:15px;font-weight:700;margin-bottom:12px;">ใบงานตรวจ ('+U.sheets.length+')</div>'+body+'</div>' +
     '<div class="bottom-bar">' +
@@ -974,19 +963,12 @@ function gotoUnit(uidv){ Object.assign(state,{screen:'unit',curU:uidv,curS:null,
 function gotoSheet(sid){ Object.assign(state,{screen:'sheet',curS:sid,overlay:null}); render(); }
 function backToProject(){ Object.assign(state,{screen:'project',curU:null,curS:null,overlay:null}); render(); }
 function backToUnit(){ Object.assign(state,{screen:'unit',curS:null,overlay:null}); render(); }
-function findCommonUnit(P){ return (P&&P.units||[]).filter(function(u){ return u.kind==='common'; })[0] || null; }
-function openCommon(){
-  var P=findProject(state.curP); if(!P) return;
-  var cu=findCommonUnit(P);
-  if(!cu){ cu={id:uid(), kind:'common', code:'ส่วนกลาง / สาธารณูปโภค', plot:'', model:'', customer:'', note:'', sheets:[], createdAt:Date.now()}; P.units.push(cu); persist(); }
-  gotoUnit(cu.id);
-}
 function gotoDefectList(){ Object.assign(state,{screen:'deflist',overlay:null}); render(); }
 function backToSheet(){ Object.assign(state,{screen:'sheet',overlay:null}); render(); }
 
 function openProjectOverlay(mode,id){ state.overlay='project'; state.formMode=mode; state.editId=id||null; if(mode!=='edit') state.formType=TYPES[0]; render(); }
 function openUnitOverlay(mode,id){ state.overlay='unit'; state.formMode=mode; state.editId=id||null; render(); }
-function openSheetOverlay(mode,id){ state.overlay='sheet'; state.formMode=mode; state.editId=id||null; if(mode!=='edit'){ var P=findProject(state.curP),U=findUnit(P,state.curU); state.formSheetMode=(U&&U.kind==='common')?'common':'handover'; } render(); }
+function openSheetOverlay(mode,id){ state.overlay='sheet'; state.formMode=mode; state.editId=id||null; if(mode!=='edit') state.formSheetMode='handover'; render(); }
 function openDefectOverlay(mode,id){
   state.overlay='defect'; state.formMode=mode; state.editId=id||null;
   state.formCat=CATS[0].id; state.formSev='minor'; state.formRoom=ROOMS[0]; state.formNoteDraft=''; state.formStatus='open';
@@ -1438,7 +1420,6 @@ document.getElementById('app').addEventListener('click', function(e){
   switch(a){
     case 'open-project': gotoProject(el.getAttribute('data-id')); break;
     case 'open-unit': gotoUnit(el.getAttribute('data-id')); break;
-    case 'open-common': openCommon(); break;
     case 'open-sheet': gotoSheet(el.getAttribute('data-id')); break;
     case 'open-deflist': gotoDefectList(); break;
     case 'back-sheet': backToSheet(); break;
