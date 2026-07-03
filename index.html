@@ -223,7 +223,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v22 · 2 ก.ค. 2026';
+var APP_VERSION = 'v23 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -730,7 +730,7 @@ function renderSheetScreen(){
   return '<div class="screen">' +
     '<div class="topbar">' +
       '<div class="topbar-row">' +
-        '<span class="tapopt back-link" data-action="back-unit" style="flex:1;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+IC_BACK+'</svg><span>'+esc(U.code)+'</span></span>' +
+        '<span class="tapopt back-link" data-action="back-unit" style="flex:1;font-size:22px;font-weight:700;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">'+IC_BACK+'</svg><span>'+esc(U.kind==='common'?'ส่วนกลาง':(U.plot?'แปลง '+U.plot:U.code))+'</span></span>' +
         iconBtn('open-overlay-sheet',' data-mode="edit" data-id="'+attr(S.id)+'"',IC_EDIT) +
         iconBtn('back-projects','',IC_HOME) +
       '</div>' +
