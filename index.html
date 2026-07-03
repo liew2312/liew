@@ -223,7 +223,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v21 · 2 ก.ค. 2026';
+var APP_VERSION = 'v22 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -1302,9 +1302,15 @@ function moveDefect(did,dir){
 }
 function addFilesAsPhotos(fileList){
   var files=Array.prototype.slice.call(fileList||[]); if(!files.length) return;
-  var bucket = state.photoTarget==='after' ? pendingPhotosAfter : pendingPhotos;
+  var target = state.photoTarget==='after' ? 'after' : 'before';
+  var bucket = target==='after' ? pendingPhotosAfter : pendingPhotos;
   files=files.slice(0,Math.max(0,MAX_PHOTOS_PER_DEFECT-bucket.length));
-  Promise.all(files.map(downscalePhoto)).then(function(urls){ urls.forEach(function(u){ if(u) bucket.push({url:u,photoId:null}); }); refreshPhotoStrip(); });
+  Promise.all(files.map(downscalePhoto)).then(function(urls){
+    var firstIdx=-1;
+    urls.forEach(function(u){ if(u){ bucket.push({url:u,photoId:null}); if(firstIdx<0) firstIdx=bucket.length-1; } });
+    refreshPhotoStrip();
+    if(firstIdx>=0) openAnnotate(target, firstIdx);
+  });
 }
 
 /* ---------- PDF / report ---------- */
