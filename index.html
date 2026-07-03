@@ -70,6 +70,8 @@ img{ max-width:100%; display:block; }
 .topbar-row{ display:flex; align-items:center; gap:10px; min-height:34px; }
 .back-link{ display:inline-flex; align-items:center; gap:4px; color:#fff; font-size:14px; font-weight:600; min-width:0; }
 .back-link span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.back-link{ gap:9px; }
+.back-link svg{ width:20px; height:20px; padding:7px; box-sizing:content-box; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.36); border-radius:999px; flex-shrink:0; }
 .icon-btn{ width:38px; height:38px; border-radius:999px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:rgba(255,255,255,.16); color:#fff; border:1px solid rgba(255,255,255,.34); }
 .icon-btn:active{ background:rgba(255,255,255,.30); }
 .topbar h1{ font-size:28px; font-weight:700; letter-spacing:-.015em; margin:12px 0 0; line-height:1.12; color:#fff; }
@@ -238,7 +240,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v27 · 2 ก.ค. 2026';
+var APP_VERSION = 'v28 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -534,7 +536,7 @@ var IC_EDIT='<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19
 var IC_HOME='<path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"></path>';
 var IC_PDF='<path d="M14 3v5h5"></path><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Z"></path><path d="M9 13h6M9 17h4"></path>';
 var IC_PLUS='<path d="M12 5v14M5 12h14"></path>';
-var IC_BACK='<path d="m15 18-6-6 6-6"></path>';
+var IC_BACK='<path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path>';
 var IC_GEAR='<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>';
 
 /* ---------- screen: projects (home) ---------- */
