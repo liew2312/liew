@@ -218,7 +218,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v17 · 2 ก.ค. 2026';
+var APP_VERSION = 'v19 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -423,7 +423,7 @@ var state = {
   formMode:'add', editId:null,
   formType:TYPES[0], formSheetMode:'handover',
   formCat:CATS[0].id, formSev:'minor', formRoom:ROOMS[0],
-  sigRole:'se', photoTarget:'before', formNoteDraft:'', formStatus:'open', annTarget:'before', annIndex:0,
+  sigRole:'se', photoTarget:'before', formNoteDraft:'', formStatus:'open', annTarget:'before', annIndex:0, exportScope:'sheet',
 };
 
 /* ---------- data helpers ---------- */
@@ -439,6 +439,15 @@ function modeMeta(mode){
     : { label:'ตรวจก่อนโอน', tag:'tag-handover', work:'งานส่งมอบลูกค้า' };
 }
 function secondSignerLabel(mode){ return mode==='stock' ? 'ผู้จัดการโครงการ (PM)' : 'ลูกค้า / ผู้รับมอบ'; }
+function sortedDefects(ds, mode){
+  var arr=(ds||[]).slice();
+  if(mode==='cat'){
+    arr.sort(function(a,b){ var ia=CATS.findIndex(function(c){return c.id===a.cat;}), ib=CATS.findIndex(function(c){return c.id===b.cat;}); ia=ia<0?999:ia; ib=ib<0?999:ib; return ia-ib || String(catName(a.cat)).localeCompare(String(catName(b.cat)),'th'); });
+  } else if(mode==='room'){
+    arr.sort(function(a,b){ var ia=ROOMS.indexOf(a.room), ib=ROOMS.indexOf(b.room); ia=ia<0?999:ia; ib=ib<0?999:ib; return ia-ib || String(a.room).localeCompare(String(b.room),'th'); });
+  }
+  return arr;
+}
 function catName(id){ var c = CATS.find(function(x){ return x.id===id; }); return c ? c.name : id; }
 
 /* counts */
@@ -489,6 +498,7 @@ function renderApp(){
   else if (state.overlay==='signature') overlayHtml = renderSignatureOverlay();
   else if (state.overlay==='settings') overlayHtml = renderSettingsOverlay();
   else if (state.overlay==='annotate') overlayHtml = renderAnnotateOverlay();
+  else if (state.overlay==='export') overlayHtml = renderExportOverlay();
 
   return '<div class="app-shell">' + screenHtml + overlayHtml + '</div>';
 }
@@ -610,11 +620,11 @@ function renderUnitScreen(){
   return '<div class="screen">' +
     '<div class="topbar">' +
       '<div class="topbar-row">' +
-        '<span class="tapopt back-link" data-action="back-project" style="flex:1;font-size:19px;font-weight:700;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_BACK+'</svg><span>'+esc(P.name)+'</span></span>' +
+        '<span class="tapopt back-link" data-action="back-project" style="flex:1;font-size:22px;font-weight:700;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">'+IC_BACK+'</svg><span>'+esc(P.name)+'</span></span>' +
         iconBtn('open-overlay-unit',' data-mode="edit" data-id="'+attr(U.id)+'"',IC_EDIT) +
         iconBtn('back-projects','',IC_HOME) +
       '</div>' +
-      (U.plot?'<div style="font-size:23px;font-weight:800;color:#fff;margin-bottom:2px;line-height:1.12;">แปลง '+esc(U.plot)+'</div>':'') +
+      (U.plot?'<div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:2px;line-height:1.12;">แปลง '+esc(U.plot)+'</div>':'') +
       '<h1 style="font-size:23px;margin-top:4px;">บ้านเลขที่ '+esc(U.code)+'</h1>' +
       '<div class="sub">'+(U.model?'แบบ '+esc(U.model)+' · ':'')+esc(U.customer || 'ยังไม่ระบุลูกค้า')+(U.note?' · '+esc(U.note):'')+'</div>' +
     '</div>' +
@@ -710,7 +720,7 @@ function renderSheetScreen(){
       '<div class="sub">'+(S.date?esc(S.date):'ยังไม่ระบุวันที่')+(S.inspector?' · ผู้ตรวจ '+esc(S.inspector):'')+'</div>' +
     '</div>' +
     '<div class="scroll" style="padding:16px;">' +
-      '<button type="button" class="tapopt" data-action="export-pdf" data-scope="sheet" style="width:100%;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1.5px solid var(--ap-red-600);color:var(--ap-red-600);border-radius:12px;padding:14px;font-size:15px;font-weight:700;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+IC_PDF+'</svg>ส่งออกรายงาน PDF</button>' +
+      '<button type="button" class="tapopt" data-action="open-export" data-scope="sheet" style="width:100%;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1.5px solid var(--ap-red-600);color:var(--ap-red-600);border-radius:12px;padding:14px;font-size:15px;font-weight:700;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+IC_PDF+'</svg>ส่งออกรายงาน PDF</button>' +
       summary + listLink + signHtml +
     '</div>' +
     '<div class="bottom-bar">' +
@@ -1079,6 +1089,23 @@ function initAnnotator(){
 }
 function openSignature(role){ state.overlay='signature'; state.sigRole=role; sigPad=null; render(); }
 function openSettings(){ state.overlay='settings'; render(); }
+function openExport(scope){ state.exportScope=scope||'sheet'; state.overlay='export'; render(); }
+function renderExportOverlay(){
+  function opt(sort,label,desc,svg){
+    return '<button type="button" class="tapopt" data-action="export-pdf" data-sort="'+sort+'" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;background:#fff;border:1px solid var(--border-subtle);border-radius:14px;padding:14px 15px;margin-bottom:10px;">' +
+      '<span style="width:38px;height:38px;border-radius:10px;background:var(--ap-red-50);color:var(--ap-red-600);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">'+svg+'</svg></span>' +
+      '<span style="flex:1;min-width:0;"><b style="font-size:14.5px;">'+label+'</b><span style="display:block;font-size:12px;color:var(--fg-2);margin-top:1px;">'+desc+'</span></span>' +
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></button>';
+  }
+  return '<div class="overlay-backdrop tapopt" data-action="close-overlay"></div>' +
+  '<div class="overlay-sheet" id="export-overlay"><div class="sheet-grabber"></div>' +
+    '<div style="font-size:20px;font-weight:700;margin-bottom:6px;">ส่งออกรายงาน PDF</div>' +
+    '<div style="font-size:13px;color:var(--fg-2);margin-bottom:16px;">เลือกวิธีจัดเรียงรายการในรายงาน</div>' +
+    opt('order','ตามลำดับการตรวจ','เรียงตามลำดับที่บันทึก','<path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01M3 12h.01M3 18h.01"></path>') +
+    opt('cat','ตามหมวดหมู่','จัดกลุ่มตามประเภทงาน เช่น ไฟฟ้า สี','<path d="M4 5h16"></path><path d="M4 12h10"></path><path d="M4 19h6"></path>') +
+    opt('room','ตามพื้นที่ / ห้อง','จัดกลุ่มตามห้องหรือบริเวณ','<path d="M3 21V8l9-5 9 5v13"></path><path d="M9 21v-6h6v6"></path>') +
+  '</div>';
+}
 function clearAppCache(){
   if(!window.confirm('อัปเดตแอปเป็นเวอร์ชันล่าสุด? (ล้างแคช · ข้อมูลที่บันทึกไว้จะยังอยู่ครบ)')) return;
   var done=function(){ try{ location.reload(); }catch(e){ location.href=location.href; } };
@@ -1254,7 +1281,7 @@ function addFilesAsPhotos(fileList){
 }
 
 /* ---------- PDF / report ---------- */
-function buildReportHtml(P, U, sheets, urlMap, sigMap){
+function buildReportHtml(P, U, sheets, urlMap, sigMap, sortMode){
   var RSTAT = {
     open:{ name:'เปิดงาน', color:'#921C1E', bg:'#FAEBEB' },
     prog:{ name:'กำลังแก้ไข', color:'#9B6612', bg:'#F6ECD6' },
@@ -1277,7 +1304,7 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap){
   }
 
   var sections = sheets.map(function(S){
-    var mm=modeMeta(S.mode), ds=S.defects||[];
+    var mm=modeMeta(S.mode), ds=sortedDefects(S.defects||[], sortMode);
     var counts={ all:ds.length, done:ds.filter(function(d){return d.status==='done';}).length };
     var closed = counts.all>0 && counts.done===counts.all;
     var stamp = closed ? '<div class="stamp">เอกสารปิดแล้ว</div>' : '';
@@ -1358,7 +1385,7 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap){
   var scriptTag='<scr'+'ipt>window.addEventListener("load",function(){setTimeout(function(){window.print();},500);});</scr'+'ipt>';
   return '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>รายงานตรวจบ้าน · '+esc(P.name)+' · '+esc(U.code)+'</title><style>'+css+'</style></head><body><div class="wrap">'+sections+'</div><button class="ph" onclick="window.print()">พิมพ์ / บันทึก PDF</button>'+scriptTag+'</body></html>';
 }
-function exportPDF(scope){
+function exportPDF(scope, sortMode){
   var P=findProject(state.curP), U=findUnit(P,state.curU);
   if(!P||!U) return;
   var sheets = scope==='sheet' ? [findSheet(U,state.curS)].filter(Boolean) : (U.sheets||[]).slice().sort(function(a,b){return (a.round||0)-(b.round||0);});
@@ -1371,7 +1398,7 @@ function exportPDF(scope){
   Promise.all(Array.from(idSet).map(function(id){ return Photos.get(id).then(function(url){ return [id,url]; }); }))
     .then(function(entries){
       var urlMap = new Map(entries.filter(function(e){ return e[1]; }));
-      var html = buildReportHtml(P, U, sheets, urlMap, sigMap);
+      var html = buildReportHtml(P, U, sheets, urlMap, sigMap, sortMode);
       if(w){ w.document.open(); w.document.write(html); w.document.close(); }
     })
     .catch(function(){ if(w) w.close(); });
@@ -1416,7 +1443,8 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'remove-sheet': if(window.confirm('ลบใบงานตรวจนี้ทั้งหมดใช่หรือไม่? (ลบ defect และรูปทั้งหมดในใบงาน)')) removeSheet(el.getAttribute('data-id')); break;
     case 'add-cat': addCategory(); break;
     case 'add-room': addRoom(); break;
-    case 'export-pdf': exportPDF(el.getAttribute('data-scope')); break;
+    case 'open-export': openExport(el.getAttribute('data-scope')); break;
+    case 'export-pdf': { var scp=state.exportScope||el.getAttribute('data-scope')||'sheet'; exportPDF(scp, el.getAttribute('data-sort')); state.overlay=null; render(); break; }
     case 'annotate-photo': openAnnotate(el.getAttribute('data-target'), el.getAttribute('data-index')); break;
     case 'close-annotate': closeAnnotate(); break;
     case 'trigger-camera': state.photoTarget=el.getAttribute('data-target')||'before'; document.getElementById('cam-input').click(); break;
