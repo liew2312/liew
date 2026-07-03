@@ -251,7 +251,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v30 · 2 ก.ค. 2026';
+var APP_VERSION = 'v32 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -588,7 +588,7 @@ function renderProjectsScreen(){
       '<div class="topbar-row"><div class="eyebrow" style="flex:1;">AP · วิศวกรโครงการ</div>' +
         iconBtn('open-settings','',IC_GEAR) + '</div>' +
       '<h1>โครงการของฉัน</h1></div>' +
-    '<div class="scroll" style="padding:16px;">'+backupReminderHtml()+overview+heading+body+'</div>' +
+    '<div class="scroll" style="padding:16px;">'+backupReminderHtml()+heading+body+'</div>' +
     '<div class="bottom-bar"><button type="button" class="btn-primary tapopt" data-action="open-overlay-project" data-mode="add">' +
       '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>เพิ่มโครงการ</button></div>' +
   '</div>';
@@ -1499,8 +1499,25 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap, sortMode){
     '@media screen{body{background:#EAE8E2;}.wrap{max-width:900px;margin:22px auto;}.sheet{background:#fff;padding:30px 32px;margin-bottom:20px;box-shadow:0 8px 26px rgba(0,0,0,.14);}.ph{position:fixed;top:14px;right:14px;background:#921C1E;color:#fff;padding:11px 17px;border-radius:999px;font:600 13px sans-serif;cursor:pointer;border:0;z-index:9;}}' +
     '@media print{.ph{display:none;}}';
 
-  var scriptTag='<scr'+'ipt>window.addEventListener("load",function(){var sb=document.getElementById("ph-share");if(sb)sb.addEventListener("click",function(){try{var f=new File([document.documentElement.outerHTML],"report.html",{type:"text/html"});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:"รายงานตรวจบ้าน AP"});}else{window.print();}}catch(e){window.print();}});setTimeout(function(){window.print();},600);});</scr'+'ipt>';
-  return '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>รายงานตรวจบ้าน · '+esc(P.name)+' · '+esc(U.code)+'</title><style>'+css+'</style></head><body><div class="wrap">'+sections+'</div><button class="ph" onclick="window.print()">พิมพ์ / บันทึก PDF</button><button class="ph" id="ph-share" style="right:158px;background:#2F7A4F;">แชร์</button>'+scriptTag+'</body></html>';
+  var s1='window.addEventListener("load",function(){'+
+    'var sb=document.getElementById("ph-share");'+
+    'function ls(src){return new Promise(function(res,rej){var s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}'+
+    'function fn(){return "ap-report-"+Date.now()+".pdf";}'+
+    'function makePdf(){return ls("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js")'+
+      '.then(function(){return ls("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");})'+
+      '.then(function(){return html2canvas(document.querySelector(".wrap"),{scale:2,backgroundColor:"#ffffff",useCORS:true});})'+
+      '.then(function(canvas){var J=window.jspdf.jsPDF;var pdf=new J("p","mm","a4");var pw=210,ph=297;var pageH=Math.floor(canvas.width*ph/pw);var y=0,first=true;'+
+        'while(y<canvas.height){var sh=Math.min(pageH,canvas.height-y);var pc=document.createElement("canvas");pc.width=canvas.width;pc.height=sh;pc.getContext("2d").drawImage(canvas,0,y,canvas.width,sh,0,0,canvas.width,sh);if(!first)pdf.addPage();first=false;pdf.addImage(pc.toDataURL("image/jpeg",0.9),"JPEG",0,0,pw,sh*pw/canvas.width);y+=sh;}'+
+        'return pdf.output("blob");});}'+
+    'if(sb)sb.addEventListener("click",function(){var t=sb.textContent;sb.textContent="กำลังสร้าง PDF…";sb.disabled=true;'+
+      'makePdf().then(function(blob){sb.textContent=t;sb.disabled=false;var file=new File([blob],fn(),{type:"application/pdf"});'+
+        'if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:"รายงานตรวจบ้าน AP"}).catch(function(){});}'+
+        'else{var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download=fn();document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1500);}'+
+      '}).catch(function(){sb.textContent=t;sb.disabled=false;window.alert("สร้าง PDF ไม่สำเร็จ (ต้องมีอินเทอร์เน็ต) — ใช้ปุ่มพิมพ์เพื่อบันทึก/แชร์ PDF แทนได้");});'+
+    '});'+
+  '});';
+  var scriptTag='<scr'+'ipt>'+s1+'</scr'+'ipt>';
+  return '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>รายงานตรวจบ้าน · '+esc(P.name)+' · '+esc(U.code)+'</title><style>'+css+'</style></head><body><div class="wrap">'+sections+'</div><button class="ph" onclick="window.print()">พิมพ์ / บันทึก PDF</button><button class="ph" id="ph-share" style="right:158px;background:#2F7A4F;">แชร์ PDF</button>'+scriptTag+'</body></html>';
 }
 function exportPDF(scope, sortMode){
   var P=findProject(state.curP), U=findUnit(P,state.curU);
