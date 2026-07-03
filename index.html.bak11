@@ -238,7 +238,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v27 · 2 ก.ค. 2026';
+var APP_VERSION = 'v26 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -697,7 +697,6 @@ function defectListHtml(S){
           '<span class="dacts">' +
             '<span class="tapopt" data-action="move-defect" data-dir="up" data-id="'+attr(d.id)+'" style="color:'+upC+';"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span>' +
             '<span class="tapopt" data-action="move-defect" data-dir="down" data-id="'+attr(d.id)+'" style="color:'+dnC+';"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"></path></svg></span>' +
-            '<span class="tapopt" data-action="duplicate-defect" data-id="'+attr(d.id)+'" style="color:var(--fg-2);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></span>' +
             '<span class="tapopt" data-action="remove-defect" data-id="'+attr(d.id)+'" style="color:var(--fg-3);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"></path></svg></span>' +
           '</span>' +
         '</div>' +
@@ -786,8 +785,7 @@ function renderDefectListScreen(){
         '<input class="fld" id="deflist-search" placeholder="ค้นหา หมวด / ห้อง / รายละเอียด" value="'+attr(dfQuery)+'" style="margin-bottom:10px;">' +
         '<div class="chip-row" style="margin-bottom:14px;">' +
           ['all','open','prog','done'].map(function(k){ var nm={all:'ทั้งหมด',open:'รอแก้',prog:'กำลังแก้',done:'แก้แล้ว'}[k]; return '<span class="chip tapopt'+(dfStatus===k?' is-active':'')+'" data-dfilter="'+k+'">'+nm+'</span>'; }).join('') +
-        '</div>' +
-        '<button type="button" class="tapopt" data-action="bulk-done" style="width:100%;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--success-bg);border:1px solid var(--success);color:var(--success);border-radius:12px;padding:11px;font-size:14px;font-weight:700;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"></path></svg>ทำเครื่องหมาย “แก้แล้ว” ทั้งหมดที่แสดง</button>'
+        '</div>'
       ) : '') +
       '<div id="deflist-cards">' + defectListHtml(S) + '</div>' +
       '<div id="deflist-empty" class="empty-state" style="display:none;">ไม่พบรายการที่ค้นหา</div>' +
@@ -938,8 +936,6 @@ function renderSettingsOverlay(){
     '<div style="font-size:13px;color:var(--fg-2);line-height:1.55;margin-bottom:12px;">มี '+projects.length+' โครงการในเครื่อง · แนะนำให้สำรองข้อมูลเป็นไฟล์เก็บไว้ กันข้อมูลหายเมื่อเปลี่ยนเครื่อง ล้างเบราว์เซอร์ หรือถอนแอป</div>' +
     '<button type="button" class="btn-primary tapopt" data-action="export-backup"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3v12"></path><path d="m8 11 4 4 4-4"></path><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg>สำรองข้อมูล (ดาวน์โหลดไฟล์)</button>' +
     '<button type="button" class="btn-ghost tapopt" data-action="import-backup" style="margin-top:10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 15V3"></path><path d="m8 7 4-4 4 4"></path><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg>กู้คืนข้อมูลจากไฟล์</button>' +
-    '<button type="button" class="btn-ghost tapopt" data-action="share-backup" style="margin-top:10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"></path></svg>แชร์ไฟล์สำรอง (LINE / อื่นๆ)</button>' +
-    '<button type="button" class="btn-ghost tapopt" data-action="share-app" style="margin-top:10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><path d="M16 6l-4-4-4 4"></path><path d="M12 2v13"></path></svg>แชร์ลิงก์แอป (ให้คนอื่นติดตั้ง)</button>' +
     '<div style="height:1px;background:var(--border-subtle);margin:20px 0;"></div>' +
     '<div style="font-size:13px;color:var(--fg-2);line-height:1.55;margin-bottom:14px;">ถ้าแอปไม่อัปเดตเป็นเวอร์ชันล่าสุด กดปุ่มด้านล่างเพื่อล้างแคชแล้วโหลดใหม่ · ข้อมูลที่บันทึกไว้จะยังอยู่ครบ</div>' +
     '<button type="button" class="btn-ghost tapopt" data-action="clear-cache"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>อัปเดต / ล้างแคช</button>' +
@@ -1173,60 +1169,20 @@ function collectPhotoIds(){
   return Object.keys(ids);
 }
 function readList(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]')||[]; }catch(e){ return []; } }
-function buildBackupBlob(then){
+function exportBackup(){
   var ids=collectPhotoIds();
   Promise.all(ids.map(function(id){ return Photos.get(id).then(function(u){ return [id,u]; }); })).then(function(entries){
     var photos={}; entries.forEach(function(e){ if(e[1]) photos[e[0]]=e[1]; });
     var data={ app:'ap-inspect', schema:'v4', version:APP_VERSION, exportedAt:new Date().toISOString(),
       projects:projects, photos:photos, cats:readList(CAT_KEY), rooms:readList(ROOM_KEY) };
-    then(new Blob([JSON.stringify(data)],{type:'application/json'}));
-  });
-}
-function backupFileName(){ var d=new Date(), p=function(n){ return (n<10?'0':'')+n; }; return 'ap-inspect-backup-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+'.json'; }
-function exportBackup(){
-  buildBackupBlob(function(blob){
+    var blob=new Blob([JSON.stringify(data)],{type:'application/json'});
     var url=URL.createObjectURL(blob), a=document.createElement('a');
-    a.href=url; a.download=backupFileName();
+    var d=new Date(), pad=function(n){ return (n<10?'0':'')+n; };
+    a.href=url; a.download='ap-inspect-backup-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     try{ localStorage.setItem(BACKUP_KEY, String(Date.now())); }catch(e){}
     setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
   });
-}
-function shareBackup(){
-  buildBackupBlob(function(blob){
-    var file=new File([blob], backupFileName(), {type:'application/json'});
-    try{ localStorage.setItem(BACKUP_KEY, String(Date.now())); }catch(e){}
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      navigator.share({files:[file], title:'ไฟล์สำรองตรวจบ้าน AP', text:'ไฟล์สำรองข้อมูลแอปตรวจบ้าน AP'}).catch(function(){});
-    } else {
-      var url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=backupFileName(); document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); },1500);
-      window.alert('อุปกรณ์นี้แชร์ไฟล์ตรงไม่ได้ — ดาวน์โหลดไฟล์ไว้แล้ว เปิดแอปไฟล์/LINE เพื่อแชร์ต่อได้');
-    }
-  });
-}
-function shareAppLink(){
-  var url=location.origin+location.pathname;
-  if(navigator.share){ navigator.share({ title:'แอปตรวจบ้าน AP', text:'ติดตั้งแอปตรวจ & ปรับปรุงบ้าน AP', url:url }).catch(function(){}); }
-  else { window.prompt('คัดลอกลิงก์แอปเพื่อแชร์', url); }
-}
-function duplicateDefect(did){
-  var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS); if(!S) return;
-  var i=S.defects.findIndex(function(d){ return d.id===did; }); if(i<0) return;
-  var d=S.defects[i];
-  var copy={ id:uid(), room:d.room, cat:d.cat, sev:d.sev, status:'open', note:d.note, photoIds:[], photoIdsAfter:[], time:'', createdAt:Date.now() };
-  S.defects.splice(i+1,0,copy); persist(); render();
-}
-function bulkDoneVisible(){
-  var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS); if(!S) return;
-  var q=(dfQuery||'').trim().toLowerCase();
-  var targets=(S.defects||[]).filter(function(d){
-    var okS=dfStatus==='all'||d.status===dfStatus;
-    var okQ=!q||((d.room+' '+catName(d.cat)+' '+(d.note||'')).toLowerCase().indexOf(q)>=0);
-    return okS && okQ && d.status!=='done';
-  });
-  if(!targets.length){ window.alert('ไม่มีรายการที่ยังไม่แก้ในมุมมองที่แสดงอยู่'); return; }
-  if(!window.confirm('ทำเครื่องหมาย “แก้แล้ว” ให้ '+targets.length+' รายการที่แสดงอยู่?')) return;
-  targets.forEach(function(d){ d.status='done'; }); persist(); render();
 }
 function importBackupFile(file){
   if(!file) return;
@@ -1479,8 +1435,8 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap, sortMode){
     '@media screen{body{background:#EAE8E2;}.wrap{max-width:900px;margin:22px auto;}.sheet{background:#fff;padding:30px 32px;margin-bottom:20px;box-shadow:0 8px 26px rgba(0,0,0,.14);}.ph{position:fixed;top:14px;right:14px;background:#921C1E;color:#fff;padding:11px 17px;border-radius:999px;font:600 13px sans-serif;cursor:pointer;border:0;z-index:9;}}' +
     '@media print{.ph{display:none;}}';
 
-  var scriptTag='<scr'+'ipt>window.addEventListener("load",function(){var sb=document.getElementById("ph-share");if(sb)sb.addEventListener("click",function(){try{var f=new File([document.documentElement.outerHTML],"report.html",{type:"text/html"});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:"รายงานตรวจบ้าน AP"});}else{window.print();}}catch(e){window.print();}});setTimeout(function(){window.print();},600);});</scr'+'ipt>';
-  return '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>รายงานตรวจบ้าน · '+esc(P.name)+' · '+esc(U.code)+'</title><style>'+css+'</style></head><body><div class="wrap">'+sections+'</div><button class="ph" onclick="window.print()">พิมพ์ / บันทึก PDF</button><button class="ph" id="ph-share" style="right:158px;background:#2F7A4F;">แชร์</button>'+scriptTag+'</body></html>';
+  var scriptTag='<scr'+'ipt>window.addEventListener("load",function(){setTimeout(function(){window.print();},500);});</scr'+'ipt>';
+  return '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>รายงานตรวจบ้าน · '+esc(P.name)+' · '+esc(U.code)+'</title><style>'+css+'</style></head><body><div class="wrap">'+sections+'</div><button class="ph" onclick="window.print()">พิมพ์ / บันทึก PDF</button>'+scriptTag+'</body></html>';
 }
 function exportPDF(scope, sortMode){
   var P=findProject(state.curP), U=findUnit(P,state.curU);
@@ -1524,8 +1480,6 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'clear-cache': clearAppCache(); break;
     case 'install-app': triggerInstall(); break;
     case 'export-backup': exportBackup(); break;
-    case 'share-backup': shareBackup(); break;
-    case 'share-app': shareAppLink(); break;
     case 'dismiss-backup': try{ sessionStorage.setItem('ap_backup_dismiss','1'); }catch(e){} render(); break;
     case 'import-backup': document.getElementById('backup-input').click(); break;
     case 'clear-signature': if(sigPad) sigPad.clear(); break;
@@ -1540,8 +1494,6 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'cycle-status': cycleDefectStatus(el.getAttribute('data-id')); break;
     case 'remove-defect': if(window.confirm('ลบ defect นี้ใช่หรือไม่?')) removeDefect(el.getAttribute('data-id')); break;
     case 'move-defect': moveDefect(el.getAttribute('data-id'), el.getAttribute('data-dir')); break;
-    case 'duplicate-defect': duplicateDefect(el.getAttribute('data-id')); break;
-    case 'bulk-done': bulkDoneVisible(); break;
     case 'remove-sheet': if(window.confirm('ลบใบงานตรวจนี้ทั้งหมดใช่หรือไม่? (ลบ defect และรูปทั้งหมดในใบงาน)')) removeSheet(el.getAttribute('data-id')); break;
     case 'add-cat': addCategory(); break;
     case 'add-room': addRoom(); break;
