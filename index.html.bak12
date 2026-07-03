@@ -218,17 +218,6 @@ textarea.fld{ resize:none; line-height:1.45; }
 .dafter{ font-size:11px; font-weight:700; color:var(--success); }
 .dacts{ margin-left:auto; display:flex; gap:12px; }
 .dacts .tapopt{ display:inline-flex; }
-.proj-card{ padding:15px 16px 14px; }
-.proj-head{ display:flex; align-items:center; gap:12px; }
-.proj-ic{ width:46px; height:46px; border-radius:13px; background:var(--ap-red-50); color:var(--ap-red-600); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.proj-titles{ flex:1; min-width:0; }
-.proj-name{ font-size:18px; font-weight:800; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.proj-type{ font-size:12.5px; color:var(--fg-2); margin-top:1px; }
-.proj-prog{ display:flex; align-items:center; gap:10px; margin-top:14px; }
-.proj-pct{ font-size:12px; color:var(--fg-3); font-variant-numeric:tabular-nums; font-weight:600; }
-.proj-meta{ display:flex; align-items:center; gap:16px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border-subtle); font-size:13px; color:var(--fg-2); }
-.proj-meta b{ color:var(--fg-1); }
-.proj-open{ margin-left:auto; font-weight:700; font-size:11.5px; padding:4px 11px; border-radius:999px; white-space:nowrap; }
 
 @media print{ .app-shell{ display:none; } }
 </style>
@@ -251,7 +240,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v29 · 2 ก.ค. 2026';
+var APP_VERSION = 'v28 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -552,35 +541,28 @@ var IC_GEAR='<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 
 
 /* ---------- screen: projects (home) ---------- */
 function renderProjectsScreen(){
-  var body, overview='', heading='';
+  var body;
   if (!projects.length){
     body = '<div class="empty-state">' +
       '<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" style="margin-bottom:14px;"><path d="M3 21V8l9-5 9 5v13"></path><path d="M9 21v-6h6v6"></path></svg>' +
       '<div>ยังไม่มีโครงการ<br>กดปุ่มด้านล่างเพื่อเพิ่มโครงการแรก</div></div>';
   } else {
-    var allDs=[]; projects.forEach(function(p){ allDs=allDs.concat(projDefects(p)); });
-    var totUnits=projects.reduce(function(a,p){ return a+(p.units||[]).filter(function(u){ return u.kind!=='common'; }).length; },0);
-    overview = '<div class="stat-row" style="margin:0 0 18px;">' +
-      '<div class="stat stat-blue"><b>'+projects.length+'</b><span>โครงการ</span></div>' +
-      '<div class="stat stat-green"><b>'+totUnits+'</b><span>แปลง</span></div>' +
-      '<div class="stat stat-red"><b>'+openOf(allDs)+'</b><span>defect รอแก้</span></div>' +
-    '</div>';
-    heading = '<div style="font-size:15px;font-weight:700;margin:0 0 12px;">โครงการทั้งหมด ('+projects.length+')</div>';
-    body = '<div style="display:flex;flex-direction:column;gap:14px;">' + projects.map(function(p){
+    body = '<div style="display:flex;flex-direction:column;gap:12px;">' + projects.map(function(p){
       var ds = projDefects(p), prog = progressOf(ds), open = openOf(ds), total = ds.length;
-      var units = (p.units||[]).filter(function(u){ return u.kind!=='common'; }).length;
-      var op = open>0 ? {t:open+' รอแก้', bg:'var(--ap-red-50)', c:'var(--ap-red-700)'}
-        : (total>0 ? {t:'ครบแล้ว', bg:'var(--success-bg)', c:'var(--success)'} : {t:'ยังไม่เริ่ม', bg:'var(--ap-neutral-200)', c:'var(--fg-2)'});
-      return '<div class="card tapopt proj-card" data-action="open-project" data-id="'+attr(p.id)+'">' +
-        '<div class="proj-head">' +
-          '<span class="proj-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l9-5 9 5v13"></path><path d="M9 21v-6h6v6"></path></svg></span>' +
-          '<div class="proj-titles"><div class="proj-name">'+esc(p.name)+'</div><div class="proj-type">'+esc(p.type)+'</div></div>' +
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg>' +
+      var openLabel = open>0 ? (open+' รอแก้') : (total>0 ? 'ครบแล้ว' : 'ยังไม่เริ่ม');
+      return '<div class="card tapopt" data-action="open-project" data-id="'+attr(p.id)+'" style="padding:16px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">' +
+          '<div><div style="font-size:18px;font-weight:700;letter-spacing:-.01em;">'+esc(p.name)+'</div>' +
+          '<div style="font-size:13px;color:var(--fg-2);margin-top:2px;">'+esc(p.type)+'</div></div>' +
         '</div>' +
-        '<div class="proj-prog"><div class="progress-track"><div class="progress-fill" style="width:'+prog+'%;"></div></div><span class="proj-pct">'+prog+'%</span></div>' +
-        '<div class="proj-meta"><span>แปลง <b>'+units+'</b></span><span>defect <b>'+total+'</b></span>' +
-          '<span class="proj-open" style="background:'+op.bg+';color:'+op.c+';">'+esc(op.t)+'</span></div>' +
-      '</div>';
+        '<div style="display:flex;align-items:center;gap:10px;margin-top:14px;">' +
+          '<div class="progress-track"><div class="progress-fill" style="width:'+prog+'%;"></div></div>' +
+          '<span style="font-size:12px;color:var(--fg-3);font-variant-numeric:tabular-nums;">'+prog+'%</span></div>' +
+        '<div style="display:flex;gap:16px;margin-top:12px;font-size:13px;">' +
+          '<span style="color:var(--fg-2);">แปลง <b style="color:var(--fg-1);">'+p.units.length+'</b></span>' +
+          '<span style="color:var(--fg-2);">defect <b style="color:var(--fg-1);">'+total+'</b></span>' +
+          '<span style="color:var(--ap-red-600);font-weight:600;margin-left:auto;">'+esc(openLabel)+'</span>' +
+        '</div></div>';
     }).join('') + '</div>';
   }
   return '<div class="screen">' +
@@ -588,7 +570,7 @@ function renderProjectsScreen(){
       '<div class="topbar-row"><div class="eyebrow" style="flex:1;">AP · วิศวกรโครงการ</div>' +
         iconBtn('open-settings','',IC_GEAR) + '</div>' +
       '<h1>โครงการของฉัน</h1></div>' +
-    '<div class="scroll" style="padding:16px;">'+backupReminderHtml()+overview+heading+body+'</div>' +
+    '<div class="scroll" style="padding:16px;">'+backupReminderHtml()+body+'</div>' +
     '<div class="bottom-bar"><button type="button" class="btn-primary tapopt" data-action="open-overlay-project" data-mode="add">' +
       '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>เพิ่มโครงการ</button></div>' +
   '</div>';
