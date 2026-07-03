@@ -85,13 +85,13 @@ img{ max-width:100%; display:block; }
 .stat-green{ background:var(--success-bg); border-color:transparent; } .stat-green b{ color:var(--success); }
 
 /* KPI cards — soft colour-coded tiles */
-.kpi{ flex:1; border-radius:14px; padding:13px 6px; text-align:center; border:1px solid transparent; }
+.kpi{ flex:1; border-radius:14px; padding:13px 6px; text-align:center; border:1.5px solid transparent; }
 .kpi b{ display:block; font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1; }
 .kpi span{ font-size:11px; font-weight:600; margin-top:5px; display:block; }
-.kpi-all{ background:#fff; border-color:var(--border-subtle); } .kpi-all b{ color:var(--fg-1); } .kpi-all span{ color:var(--fg-2); }
-.kpi-red{ background:var(--ap-red-50); } .kpi-red b{ color:var(--ap-red-600); } .kpi-red span{ color:var(--ap-red-700); }
-.kpi-amber{ background:var(--warning-bg); } .kpi-amber b{ color:var(--warning); } .kpi-amber span{ color:var(--warning); }
-.kpi-green{ background:var(--success-bg); } .kpi-green b{ color:var(--success); } .kpi-green span{ color:var(--success); }
+.kpi-all{ background:#fff; border-color:var(--border-default); } .kpi-all b{ color:var(--fg-1); } .kpi-all span{ color:var(--fg-2); }
+.kpi-red{ background:var(--ap-red-50); border-color:var(--ap-red-600); } .kpi-red b{ color:var(--ap-red-600); } .kpi-red span{ color:var(--ap-red-700); }
+.kpi-amber{ background:var(--warning-bg); border-color:var(--warning); } .kpi-amber b{ color:var(--warning); } .kpi-amber span{ color:var(--warning); }
+.kpi-green{ background:var(--success-bg); border-color:var(--success); } .kpi-green b{ color:var(--success); } .kpi-green span{ color:var(--success); }
 
 .fld{ width:100%; font-family:var(--font-sans); font-size:16px; color:var(--fg-1); background:#fff;
   border:1px solid var(--border-default); border-radius:12px; padding:12px 14px; outline:none; }
@@ -201,6 +201,21 @@ textarea.fld{ resize:none; line-height:1.45; }
 .uc-foot{ display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:10px; flex-wrap:wrap; }
 .uc-badge{ font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; background:var(--info-bg); color:var(--info); white-space:nowrap; }
 .uc-open{ font-size:12px; font-weight:700; white-space:nowrap; }
+.dcard{ display:flex; align-items:stretch; overflow:hidden; padding:0; }
+.dnum{ flex-shrink:0; width:32px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; color:var(--ap-red-600); background:var(--ap-neutral-100); border-right:1px solid var(--border-subtle); }
+.dthumb{ flex-shrink:0; width:60px; height:60px; align-self:center; margin:10px; border-radius:10px; background-color:var(--ap-neutral-200); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:var(--ap-neutral-500); position:relative; overflow:hidden; }
+.dthumb-more{ position:absolute; right:3px; bottom:3px; background:rgba(19,19,23,.72); color:#fff; font-size:9px; font-weight:700; padding:1px 5px; border-radius:999px; }
+.dbody{ flex:1; min-width:0; padding:11px 12px 11px 2px; }
+.drow1{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.dcat{ font-size:14px; font-weight:700; }
+.dstatus{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+.dnote{ font-size:13px; color:var(--fg-2); margin-top:4px; line-height:1.4; }
+.dmeta{ display:flex; align-items:center; gap:9px; margin-top:8px; flex-wrap:wrap; }
+.dsev{ font-size:11px; font-weight:700; }
+.droom{ font-size:11.5px; color:var(--fg-3); }
+.dafter{ font-size:11px; font-weight:700; color:var(--success); }
+.dacts{ margin-left:auto; display:flex; gap:12px; }
+.dacts .tapopt{ display:inline-flex; }
 
 @media print{ .app-shell{ display:none; } }
 </style>
@@ -223,7 +238,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v23 · 2 ก.ค. 2026';
+var APP_VERSION = 'v26 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -258,6 +273,7 @@ function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g, function(c){ re
 function attr(t){ return esc(t); }
 function styleUrl(u){ return u ? "background-image:url(" + JSON.stringify(u).replace(/"/g,"'") + ")" : ''; }
 function todayStr(){ var d=new Date(); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+function fmtDateTime(ms){ if(!ms) return ''; var d=new Date(ms); function p(n){return (n<10?'0':'')+n;} return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes())+' น.'; }
 
 function downscalePhoto(file){
   return new Promise(function(resolve){
@@ -661,27 +677,31 @@ function defectListHtml(S){
   return '<div style="display:flex;flex-direction:column;gap:12px;">' + S.defects.map(function(d, idx){
     var sev = SEV[d.sev], st = STATUS[d.status];
     var hasPhoto = d.photoIds && d.photoIds.length>0;
+    var beforeExtra = (hasPhoto && d.photoIds.length>1) ? d.photoIds.length-1 : 0;
     var afterN = (d.photoIdsAfter && d.photoIdsAfter.length) || 0;
     var thumbAttr = hasPhoto ? ' data-lazy-photo="'+attr(d.photoIds[0])+'"' : '';
-    var thumbInner = hasPhoto ? '' : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.6"></circle><path d="m21 15-5-5L5 21"></path></svg>';
+    var thumbInner = hasPhoto ? (beforeExtra?'<span class="dthumb-more">+'+beforeExtra+'</span>':'') : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.6"></circle><path d="m21 15-5-5L5 21"></path></svg>';
     var canUp = idx>0, canDown = idx<S.defects.length-1;
-    return '<div class="card tapopt" data-dcard data-status="'+attr(d.status)+'" data-search="'+attr((d.room+' '+catName(d.cat)+' '+(d.note||'')).toLowerCase())+'" data-action="open-overlay-defect" data-mode="edit" data-id="'+attr(d.id)+'" style="overflow:hidden;display:flex;">' +
-      '<div class="thumb" style="width:80px;flex-shrink:0;"'+thumbAttr+'>'+thumbInner+'</div>' +
-      '<div style="flex:1;padding:11px 13px;min-width:0;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
-          '<span style="font-size:13px;font-weight:700;">'+esc(catName(d.cat))+'</span>' +
-          '<span class="tapopt" data-action="cycle-status" data-id="'+attr(d.id)+'" style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:'+st.bg+';color:'+st.color+';white-space:nowrap;">'+esc(st.name)+'</span></div>' +
-        '<div style="font-size:13px;color:var(--fg-2);margin-top:5px;line-height:1.4;">'+esc(d.note)+'</div>' +
-        '<div style="display:flex;align-items:center;gap:9px;margin-top:8px;flex-wrap:wrap;">' +
-          '<span style="font-size:11px;font-weight:700;color:'+sev.color+';">● '+esc(sev.name)+'</span>' +
-          '<span style="font-size:11.5px;color:var(--fg-3);">'+esc(d.room)+'</span>' +
-          (hasPhoto && d.photoIds.length>1 ? '<span style="font-size:11px;color:var(--fg-3);">ก่อน +'+(d.photoIds.length-1)+'</span>' : '') +
-          (afterN ? '<span style="font-size:11px;font-weight:700;color:#2F7A4F;">✓ หลัง '+afterN+' รูป</span>' : '') +
-          '<span style="margin-left:auto;display:flex;gap:10px;">' +
-            '<span class="tapopt" data-action="move-defect" data-dir="up" data-id="'+attr(d.id)+'" style="color:'+(canUp?'var(--fg-2)':'var(--ap-neutral-400)')+';display:inline-flex;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span>' +
-            '<span class="tapopt" data-action="move-defect" data-dir="down" data-id="'+attr(d.id)+'" style="color:'+(canDown?'var(--fg-2)':'var(--ap-neutral-400)')+';display:inline-flex;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"></path></svg></span>' +
-            '<span class="tapopt" data-action="remove-defect" data-id="'+attr(d.id)+'" style="color:var(--fg-3);display:inline-flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"></path></svg></span>' +
-          '</span></div></div></div>';
+    var upC = canUp?'var(--fg-2)':'var(--ap-neutral-400)', dnC = canDown?'var(--fg-2)':'var(--ap-neutral-400)';
+    return '<div class="card dcard tapopt" data-dcard data-status="'+attr(d.status)+'" data-search="'+attr((d.room+' '+catName(d.cat)+' '+(d.note||'')).toLowerCase())+'" data-action="open-overlay-defect" data-mode="edit" data-id="'+attr(d.id)+'">' +
+      '<div class="dnum">'+(idx+1)+'</div>' +
+      '<div class="dthumb"'+thumbAttr+'>'+thumbInner+'</div>' +
+      '<div class="dbody">' +
+        '<div class="drow1"><span class="dcat">'+esc(catName(d.cat))+'</span>' +
+          '<span class="tapopt dstatus" data-action="cycle-status" data-id="'+attr(d.id)+'" style="background:'+st.bg+';color:'+st.color+';">'+esc(st.name)+'</span></div>' +
+        '<div class="dnote">'+esc(d.note)+'</div>' +
+        '<div class="dmeta">' +
+          '<span class="dsev" style="color:'+sev.color+';">● '+esc(sev.name)+'</span>' +
+          '<span class="droom">'+esc(d.room)+'</span>' +
+          (afterN?'<span class="dafter">✓ หลัง '+afterN+'</span>':'') +
+          '<span class="dacts">' +
+            '<span class="tapopt" data-action="move-defect" data-dir="up" data-id="'+attr(d.id)+'" style="color:'+upC+';"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span>' +
+            '<span class="tapopt" data-action="move-defect" data-dir="down" data-id="'+attr(d.id)+'" style="color:'+dnC+';"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"></path></svg></span>' +
+            '<span class="tapopt" data-action="remove-defect" data-id="'+attr(d.id)+'" style="color:var(--fg-3);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"></path></svg></span>' +
+          '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }).join('') + '</div>';
 }
 
@@ -697,10 +717,10 @@ function renderSheetScreen(){
     done:ds.filter(function(d){return d.status==='done';}).length };
 
   var summary = '<div style="display:flex;gap:8px;margin-bottom:16px;">' +
-    '<div class="kpi kpi-all"><b>'+counts.all+'</b><span>ทั้งหมด</span></div>' +
-    '<div class="kpi kpi-red"><b>'+counts.open+'</b><span>รอแก้</span></div>' +
-    '<div class="kpi kpi-amber"><b>'+counts.prog+'</b><span>กำลังแก้</span></div>' +
-    '<div class="kpi kpi-green"><b>'+counts.done+'</b><span>แก้แล้ว</span></div>' +
+    '<div class="kpi kpi-all tapopt" data-action="open-deflist" data-dfstatus="all"><b>'+counts.all+'</b><span>ทั้งหมด</span></div>' +
+    '<div class="kpi kpi-red tapopt" data-action="open-deflist" data-dfstatus="open"><b>'+counts.open+'</b><span>รอแก้</span></div>' +
+    '<div class="kpi kpi-amber tapopt" data-action="open-deflist" data-dfstatus="prog"><b>'+counts.prog+'</b><span>กำลังแก้</span></div>' +
+    '<div class="kpi kpi-green tapopt" data-action="open-deflist" data-dfstatus="done"><b>'+counts.done+'</b><span>แก้แล้ว</span></div>' +
   '</div>';
 
   var listLink = '<div class="card tapopt" data-action="open-deflist" style="padding:15px 16px;display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
@@ -822,7 +842,7 @@ function renderSheetOverlay(){
   var curMode = S ? S.mode : state.formSheetMode;
   var nextRound = 1; U.sheets.forEach(function(s){ if((s.round||0)>=nextRound) nextRound=(s.round||0)+1; });
   var round = S ? S.round : nextRound;
-  var date = S ? (S.date||'') : todayStr();
+  var date = S ? (S.date||'') : '';
   var inspector = S ? (S.inspector||'') : '';
 
   var modeDefs = [
@@ -1333,7 +1353,8 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap, sortMode){
     return parts.length?' ('+parts.join(' · ')+')':'';
   }
   function infoItem(label, val, big){
-    return '<div class="ii'+(big?' big':'')+'"><span>'+esc(label)+'</span><b>'+(val?esc(val):'<i class="blank"></i>')+'</b></div>';
+    if(val==null || val==='') return '';
+    return '<div class="ii'+(big?' big':'')+'"><span>'+esc(label)+'</span><b>'+esc(val)+'</b></div>';
   }
 
   var sections = sheets.map(function(S){
@@ -1356,9 +1377,8 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap, sortMode){
     }).join('') || '<tr><td colspan="5" style="text-align:center;color:#9C9CA4;padding:16px;">ไม่มี defect</td></tr>';
 
     var info = '<div class="info">' +
-      infoItem('เลขที่เอกสาร', '') +
       infoItem('ประเภทงาน', mm.work) +
-      infoItem('วันที่ตรวจสอบ', (S.date||'—')+' (ครั้งที่ '+(S.round||1)+')') +
+      infoItem('วันที่ตรวจสอบ', (S.date || fmtDateTime(S.createdAt)) + ' (ครั้งที่ '+(S.round||1)+')') +
       infoItem('โครงการ', P.name) +
       infoItem('ประเภทการตรวจ', mm.label) +
       infoItem('แปลง', U.plot, true) +
@@ -1446,7 +1466,7 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'open-unit': gotoUnit(el.getAttribute('data-id')); break;
     case 'open-common': openCommon(); break;
     case 'open-sheet': gotoSheet(el.getAttribute('data-id')); break;
-    case 'open-deflist': gotoDefectList(); break;
+    case 'open-deflist': dfStatus=el.getAttribute('data-dfstatus')||'all'; dfQuery=''; gotoDefectList(); break;
     case 'back-sheet': backToSheet(); break;
     case 'back-projects': gotoProjects(); break;
     case 'back-project': backToProject(); break;
