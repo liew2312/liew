@@ -251,7 +251,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v32 · 2 ก.ค. 2026';
+var APP_VERSION = 'v33 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -832,7 +832,8 @@ function renderProjectOverlay(){
     '<textarea class="fld" id="f-p-details" rows="2" placeholder="เช่น ที่ตั้ง, เฟส, หมายเหตุโครงการ" style="margin-bottom:16px;">'+esc(details)+'</textarea>' +
     '<div class="field-label">ประเภทโครงการ</div>' +
     '<div class="chip-row" style="margin-bottom:22px;">'+typeChips+'</div>' +
-    '<button type="button" class="btn-primary tapopt" data-action="submit-project">'+(isEdit?'บันทึกการแก้ไข':'สร้างโครงการ')+'</button></div>';
+    '<button type="button" class="btn-primary tapopt" data-action="submit-project">'+(isEdit?'บันทึกการแก้ไข':'สร้างโครงการ')+'</button>' +
+    (isEdit?'<button type="button" class="tapopt" data-action="delete-project" style="width:100%;margin-top:12px;background:none;border:none;color:var(--ap-red-600);font-size:14px;font-weight:700;padding:8px;display:flex;align-items:center;justify-content:center;gap:7px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"></path></svg>ลบโครงการนี้</button>':'') + '</div>';
 }
 
 /* ---------- overlay: unit (แปลง) ---------- */
@@ -1348,6 +1349,12 @@ function removeDefect(did){
   var D=findDefect(S,did); if(D){ (D.photoIds||[]).forEach(function(id){ Photos.del(id); }); (D.photoIdsAfter||[]).forEach(function(id){ Photos.del(id); }); }
   S.defects=S.defects.filter(function(d){ return d.id!==did; }); persist(); render();
 }
+function removeProject(pid){
+  var P=findProject(pid); if(!P) return;
+  (P.units||[]).forEach(function(u){ (u.sheets||[]).forEach(function(s){ (s.defects||[]).forEach(function(d){ (d.photoIds||[]).forEach(function(id){ Photos.del(id); }); (d.photoIdsAfter||[]).forEach(function(id){ Photos.del(id); }); }); }); });
+  projects=projects.filter(function(p){ return p.id!==pid; }); persist();
+  Object.assign(state,{overlay:null,screen:'projects',curP:null,curU:null,curS:null}); render();
+}
 function removeSheet(sid){
   var P=findProject(state.curP),U=findUnit(P,state.curU); if(!U) return;
   var S=findSheet(U,sid);
@@ -1570,6 +1577,7 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'close-overlay': closeOverlay(); break;
     case 'pick-chip': { var g=el.getAttribute('data-group'), parent=el.parentElement; parent.querySelectorAll('[data-group="'+g+'"]').forEach(function(s){ s.classList.remove('is-active'); }); el.classList.add('is-active'); break; }
     case 'submit-project': submitProjectForm(); break;
+    case 'delete-project': if(window.confirm('ลบโครงการนี้และข้อมูลทั้งหมด (แปลง ใบงาน defect รูป) ใช่หรือไม่?\n\nลบแล้วกู้คืนไม่ได้ — ควรสำรองข้อมูลก่อน')) removeProject(state.editId); break;
     case 'submit-unit': submitUnitForm(); break;
     case 'submit-sheet': submitSheetForm(); break;
     case 'submit-defect': submitDefectForm(); break;
