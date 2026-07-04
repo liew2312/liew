@@ -253,7 +253,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v36 · 2 ก.ค. 2026';
+var APP_VERSION = 'v37 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -513,6 +513,13 @@ function render(){
   if (state.overlay === 'annotate') initAnnotator();
   if (state.screen === 'deflist') initDefectFilter();
   if (state.screen === 'project') initUnitFilter();
+  if (state.screen === 'deflist' && state.scrollToDefect){
+    var _sid=state.scrollToDefect; state.scrollToDefect=null;
+    requestAnimationFrame(function(){
+      var el=document.querySelector('#deflist-cards [data-dcard][data-id="'+_sid+'"]');
+      if(el){ el.scrollIntoView({block:'center'}); el.style.transition='box-shadow .2s, background .6s'; el.style.background='var(--warning-bg)'; setTimeout(function(){ el.style.background=''; }, 1000); }
+    });
+  }
 }
 function hydrateLazyPhotos(container){
   container.querySelectorAll('[data-lazy-photo]').forEach(function(el){
@@ -1328,7 +1335,7 @@ function importBackupFile(file){
   };
   reader.readAsText(file);
 }
-function closeOverlay(){ state.overlay=null; pendingPhotos=[]; pendingPhotosAfter=[]; sigPad=null; render(); }
+function closeOverlay(){ if(state.overlay==='defect' && state.formMode==='edit' && state.editId) state.scrollToDefect=state.editId; state.overlay=null; pendingPhotos=[]; pendingPhotosAfter=[]; sigPad=null; render(); }
 
 /* ---------- mutations ---------- */
 function submitProjectForm(){
@@ -1378,8 +1385,8 @@ function submitDefectForm(){
   Promise.all([resolveSet(pendingPhotos), resolveSet(pendingPhotosAfter)])
     .then(function(res){
       var photoIds=res[0], photoIdsAfter=res[1];
-      if(state.formMode==='edit'){ var D=findDefect(S,state.editId); if(D){ D.cat=cat; D.sev=sev; D.room=room; D.status=status; D.note=note; D.photoIds=photoIds; D.photoIdsAfter=photoIdsAfter; } }
-      else { S.defects.push({id:uid(),room:room,cat:cat,sev:sev,status:status,note:note,photoIds:photoIds,photoIdsAfter:photoIdsAfter,time:now,createdAt:Date.now()}); }
+      if(state.formMode==='edit'){ var D=findDefect(S,state.editId); if(D){ D.cat=cat; D.sev=sev; D.room=room; D.status=status; D.note=note; D.photoIds=photoIds; D.photoIdsAfter=photoIdsAfter; } state.scrollToDefect=state.editId; }
+      else { var nid=uid(); S.defects.push({id:nid,room:room,cat:cat,sev:sev,status:status,note:note,photoIds:photoIds,photoIdsAfter:photoIdsAfter,time:now,createdAt:Date.now()}); state.scrollToDefect=nid; }
       persist(); state.overlay=null; pendingPhotos=[]; pendingPhotosAfter=[]; render();
     });
 }
