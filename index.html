@@ -239,6 +239,7 @@ textarea.fld{ resize:none; line-height:1.45; }
 <input type="file" id="cam-input" class="hidden-file-input" accept="image/*" capture="environment">
 <input type="file" id="gal-input" class="hidden-file-input" accept="image/*" multiple>
 <input type="file" id="backup-input" class="hidden-file-input" accept="application/json,.json">
+<input type="file" id="bulk-input" class="hidden-file-input" accept="image/*" multiple>
 <script>
 "use strict";
 /* ============================================================
@@ -252,7 +253,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v35 · 2 ก.ค. 2026';
+var APP_VERSION = 'v36 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -831,6 +832,7 @@ function renderDefectListScreen(){
       '<div id="deflist-empty" class="empty-state" style="display:none;">ไม่พบรายการที่ค้นหา</div>' +
     '</div>' +
     '<div class="bottom-bar">' +
+      '<button type="button" class="btn-outline-round tapopt" data-action="bulk-add-photos" title="เพิ่มหลายรูป (1 รูป = 1 รายการ)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="4" width="12" height="12" rx="2"></rect><path d="M4 8v10a2 2 0 0 0 2 2h10"></path><path d="m11.5 10.5 1.8 1.8 2.7-2.7"></path></svg></button>' +
       '<button type="button" class="btn-primary tapopt" data-action="open-overlay-defect" data-mode="add" style="flex:1;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>บันทึก defect</button>' +
     '</div></div>';
 }
@@ -1447,6 +1449,16 @@ function moveDefect(did,dir){
   var i=S.defects.findIndex(function(d){return d.id===did;}), j=dir==='up'?i-1:i+1;
   if(i<0||j<0||j>=S.defects.length) return; var t=S.defects[i]; S.defects[i]=S.defects[j]; S.defects[j]=t; persist(); render();
 }
+function addBulkPhotos(fileList){
+  var files=Array.prototype.slice.call(fileList||[]); if(!files.length) return;
+  var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS); if(!S) return;
+  var now=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  Promise.all(files.map(downscalePhoto)).then(function(urls){
+    var chain=Promise.resolve(), added=0;
+    urls.forEach(function(u){ if(!u) return; chain=chain.then(function(){ return Photos.put(u).then(function(id){ photoUrlCache.set(id,u); S.defects.push({ id:uid(), room:ROOMS[0], cat:CATS[0].id, sev:'minor', status:'open', note:'(รอกรอกรายละเอียด)', photoIds:[id], photoIdsAfter:[], time:now, createdAt:Date.now() }); added++; }); }); });
+    chain.then(function(){ persist(); render(); if(added) window.alert('เพิ่ม '+added+' รายการจากรูปแล้ว — แตะแต่ละรายการเพื่อกรอกรายละเอียด'); });
+  });
+}
 function addFilesAsPhotos(fileList){
   var files=Array.prototype.slice.call(fileList||[]); if(!files.length) return;
   var target = state.photoTarget==='after' ? 'after' : 'before';
@@ -1652,6 +1664,7 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'export-pdf': { var scp=state.exportScope||el.getAttribute('data-scope')||'sheet'; exportPDF(scp, el.getAttribute('data-sort')); state.overlay=null; render(); break; }
     case 'annotate-photo': openAnnotate(el.getAttribute('data-target'), el.getAttribute('data-index')); break;
     case 'close-annotate': closeAnnotate(); break;
+    case 'bulk-add-photos': document.getElementById('bulk-input').click(); break;
     case 'trigger-camera': state.photoTarget=el.getAttribute('data-target')||'before'; document.getElementById('cam-input').click(); break;
     case 'trigger-gallery': state.photoTarget=el.getAttribute('data-target')||'before'; document.getElementById('gal-input').click(); break;
     case 'remove-photo': { var pt=el.getAttribute('data-target')||'before'; (pt==='after'?pendingPhotosAfter:pendingPhotos).splice(parseInt(el.getAttribute('data-index'),10),1); refreshPhotoStrip(); break; }
@@ -1661,6 +1674,7 @@ document.getElementById('app').addEventListener('click', function(e){
 document.getElementById('cam-input').addEventListener('change', function(e){ addFilesAsPhotos(e.target.files); e.target.value=''; });
 document.getElementById('gal-input').addEventListener('change', function(e){ addFilesAsPhotos(e.target.files); e.target.value=''; });
 document.getElementById('backup-input').addEventListener('change', function(e){ importBackupFile(e.target.files[0]); e.target.value=''; });
+document.getElementById('bulk-input').addEventListener('change', function(e){ addBulkPhotos(e.target.files); e.target.value=''; });
 
 /* ---------- PWA registration ---------- */
 function registerPWA(){
