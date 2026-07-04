@@ -253,7 +253,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v39 · 2 ก.ค. 2026';
+var APP_VERSION = 'v40 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -1367,7 +1367,7 @@ function submitSheetForm(){
   var date=(document.getElementById('f-s-date')||{value:''}).value.trim();
   var inspector=(document.getElementById('f-s-inspector')||{value:''}).value.trim();
   if(state.formMode==='edit'){ var S=findSheet(U,state.editId); if(S){ S.mode=mode; S.round=round; S.date=date; S.inspector=inspector; } persist(); state.overlay=null; render(); }
-  else { var ns=newSheet(mode,round,{date:date,inspector:inspector}); U.sheets.push(ns); persist(); Object.assign(state,{overlay:null,screen:'sheet',curS:ns.id}); render(); }
+  else { var ns=newSheet(mode,round,{date:date,inspector:inspector}); U.sheets.push(ns); persist(); Object.assign(state,{overlay:null,screen:'deflist',curS:ns.id}); render(); }
 }
 function submitDefectForm(){
   var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS);
@@ -1587,16 +1587,21 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap, sortMode){
     'function fn(){return "ap-report-"+Date.now()+".pdf";}'+
     'function makePdf(){return ls("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js")'+
       '.then(function(){return ls("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");})'+
-      '.then(function(){return html2canvas(document.querySelector(".wrap"),{scale:2,backgroundColor:"#ffffff",useCORS:true});})'+
-      '.then(function(canvas){var J=window.jspdf.jsPDF;var pdf=new J("p","mm","a4");var pw=210,ph=297;'+
-        'var wrap=document.querySelector(".wrap");var wr=wrap.getBoundingClientRect();var scale=canvas.width/wrap.offsetWidth;'+
-        'var bps=[0];[].forEach.call(document.querySelectorAll(".wrap tbody tr, .wrap thead, .wrap .signs, .wrap .sheet"),function(el){bps.push(Math.round((el.getBoundingClientRect().top-wr.top)*scale));});bps.push(canvas.height);'+
-        'bps=bps.filter(function(v,i,a){return v>=0&&v<=canvas.height&&a.indexOf(v)===i;}).sort(function(a,b){return a-b;});'+
-        'var pageH=Math.floor(canvas.width*ph/pw);var start=0,first=true,guard=0;'+
-        'while(start<canvas.height-1&&guard<500){guard++;var target=start+pageH;var bp=null;for(var i=0;i<bps.length;i++){if(bps[i]>start&&bps[i]<=target)bp=bps[i];}if(bp===null||bp<=start)bp=Math.min(target,canvas.height);'+
-          'var sh=bp-start;var pc=document.createElement("canvas");pc.width=canvas.width;pc.height=sh;pc.getContext("2d").drawImage(canvas,0,start,canvas.width,sh,0,0,canvas.width,sh);'+
-          'if(!first)pdf.addPage();first=false;pdf.addImage(pc.toDataURL("image/jpeg",0.9),"JPEG",0,0,pw,sh*pw/canvas.width);start=bp;}'+
-        'return pdf.output("blob");});}'+
+      '.then(function(){'+
+        'var st=document.createElement("style");st.id="pdfmode";st.textContent="@media screen{body{background:#fff!important}.wrap{max-width:none!important;width:794px!important;margin:0!important}.sheet{box-shadow:none!important;margin:0!important}}";document.head.appendChild(st);'+
+        'var wrap=document.querySelector(".wrap");'+
+        'return html2canvas(wrap,{scale:2,backgroundColor:"#ffffff",useCORS:true}).then(function(canvas){'+
+          'var wr=wrap.getBoundingClientRect();var scale=canvas.width/wrap.offsetWidth;'+
+          'var bps=[0];[].forEach.call(document.querySelectorAll(".wrap .rhead, .wrap .info, .wrap thead, .wrap tbody tr, .wrap .signs, .wrap .sheet"),function(el){bps.push(Math.round((el.getBoundingClientRect().top-wr.top)*scale));});bps.push(canvas.height);'+
+          'var e=document.getElementById("pdfmode");if(e)e.remove();'+
+          'bps=bps.filter(function(v,i,a){return v>=0&&v<=canvas.height&&a.indexOf(v)===i;}).sort(function(a,b){return a-b;});'+
+          'var J=window.jspdf.jsPDF;var pdf=new J("p","mm","a4");var pw=210,ph=297;var pageH=Math.floor(canvas.width*ph/pw);var start=0,first=true,guard=0;'+
+          'while(start<canvas.height-1&&guard<600){guard++;var target=start+pageH;var bp=null;for(var i=0;i<bps.length;i++){if(bps[i]>start&&bps[i]<=target)bp=bps[i];}if(bp===null||bp<=start)bp=Math.min(target,canvas.height);'+
+            'var sh=bp-start;var pc=document.createElement("canvas");pc.width=canvas.width;pc.height=sh;pc.getContext("2d").drawImage(canvas,0,start,canvas.width,sh,0,0,canvas.width,sh);'+
+            'if(!first)pdf.addPage();first=false;pdf.addImage(pc.toDataURL("image/jpeg",0.9),"JPEG",0,0,pw,sh*pw/canvas.width);start=bp;}'+
+          'return pdf.output("blob");'+
+        '});'+
+      '});}'+
     'if(sb)sb.addEventListener("click",function(){var t=sb.textContent;sb.textContent="กำลังสร้าง PDF…";sb.disabled=true;'+
       'makePdf().then(function(blob){sb.textContent=t;sb.disabled=false;var file=new File([blob],fn(),{type:"application/pdf"});'+
         'if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:"รายงานตรวจบ้าน AP"}).catch(function(){});}'+
