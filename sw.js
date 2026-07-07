@@ -1,5 +1,5 @@
 /* Service worker — offline app shell for the AP SE inspection app */
-const CACHE = 'ap-inspect-v40';
+const CACHE = 'ap-inspect-v41';
 
 /* Must succeed for the app to work offline. */
 const CORE = [
@@ -12,6 +12,7 @@ const CORE = [
 
 /* Nice-to-have. Cached best-effort so a missing fonts/ folder never breaks install. */
 const OPTIONAL = [
+  'manual.pdf',
   'fonts/AP-Light300.ttf',
   'fonts/AP-Regular400.ttf',
   'fonts/AP-Medium500.ttf',

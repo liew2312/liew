@@ -253,7 +253,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v40 · 2 ก.ค. 2026';
+var APP_VERSION = 'v41 · 2 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -981,6 +981,7 @@ function renderSettingsOverlay(){
     '<div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">' +
       '<span style="font-size:14px;color:var(--fg-2);">เวอร์ชันแอป</span>' +
       '<b style="font-size:15px;font-variant-numeric:tabular-nums;">'+esc(APP_VERSION)+'</b></div>' +
+    '<button type="button" class="btn-ghost tapopt" data-action="download-manual" style="margin-bottom:16px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M14 3v5h5"></path><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Z"></path><path d="M9 13h6M9 17h4"></path></svg>ดาวน์โหลดคู่มือการใช้งาน (PDF)</button>' +
     (!isStandalone() ? '<button type="button" class="btn-primary tapopt" data-action="install-app" style="margin-bottom:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="5" y="2" width="14" height="20" rx="2"></rect><path d="M12 18h.01"></path></svg>ติดตั้งแอปลงหน้าจอ</button>' : '') +
     '<div style="font-size:15px;font-weight:700;margin-bottom:6px;">ข้อมูลสำรอง</div>' +
     '<div style="font-size:13px;color:var(--fg-2);line-height:1.55;margin-bottom:12px;">มี '+projects.length+' โครงการในเครื่อง · แนะนำให้สำรองข้อมูลเป็นไฟล์เก็บไว้ กันข้อมูลหายเมื่อเปลี่ยนเครื่อง ล้างเบราว์เซอร์ หรือถอนแอป</div>' +
@@ -1226,6 +1227,7 @@ function initAnnotator(){
 }
 function openSignature(role){ state.overlay='signature'; state.sigRole=role; sigPad=null; render(); }
 function openSettings(){ state.overlay='settings'; render(); }
+function downloadManual(){ var a=document.createElement('a'); a.href='manual.pdf'; a.download='คู่มือการใช้งาน ตรวจบ้าน AP.pdf'; a.target='_blank'; a.rel='noopener'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 function openExport(scope){ state.exportScope=scope||'sheet'; state.overlay='export'; render(); }
 function renderExportOverlay(){
   function opt(sort,label,desc,svg){
@@ -1655,6 +1657,7 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'open-settings': openSettings(); break;
     case 'clear-cache': clearAppCache(); break;
     case 'install-app': triggerInstall(); break;
+    case 'download-manual': downloadManual(); break;
     case 'export-backup': exportBackup(); break;
     case 'share-backup': shareBackup(); break;
     case 'share-app': shareAppLink(); break;
