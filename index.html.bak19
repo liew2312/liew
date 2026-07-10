@@ -622,44 +622,6 @@ function freqBarHtml(c, maxT){
       '<div style="width:'+majW+'%;background:#921C1E;"></div><div style="flex:1;background:#9B6612;"></div></div>'+
     '<div style="font-size:11.5px;color:var(--fg-2);margin-top:4px;">Major '+c.major+' · Minor '+c.minor+' · พบใน '+c.unitCount+' แปลง'+(c.open?' · <span style="color:var(--ap-red-700);font-weight:700;">ค้าง '+c.open+'</span>':'')+'</div></div>';
 }
-function freqDonutHtml(cats, total){
-  var palette=['#921C1E','#E0782E','#E0B92E','#3F8F5E','#3E6D8E'];
-  var items=cats.slice(0,5).map(function(c,i){ return {name:c.name,val:c.total,color:palette[i]}; });
-  var used=items.reduce(function(a,x){return a+x.val;},0);
-  if(total-used>0) items.push({name:'อื่น ๆ',val:total-used,color:'#B0B3BA'});
-  var r=70, C=2*Math.PI*r, off=0;
-  var segs=items.map(function(x){
-    var len=(total?x.val/total:0)*C;
-    var seg='<circle cx="100" cy="100" r="'+r+'" fill="none" stroke="'+x.color+'" stroke-width="30" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 100 100)"></circle>';
-    off+=len; return seg;
-  }).join('');
-  var legend=items.map(function(x){ var p=total?Math.round(x.val/total*100):0;
-    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">'+
-      '<span style="width:12px;height:12px;border-radius:3px;background:'+x.color+';flex-shrink:0;"></span>'+
-      '<span style="font-size:13px;font-weight:600;flex:1;">'+esc(x.name)+'</span>'+
-      '<span style="font-size:12px;color:var(--fg-2);">'+x.val+' · '+p+'%</span></div>';
-  }).join('');
-  return '<div class="card" style="padding:16px;margin-bottom:20px;">'+
-    '<div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;">'+
-      '<svg width="168" height="168" viewBox="0 0 200 200" style="flex-shrink:0;">'+segs+
-        '<text x="100" y="94" text-anchor="middle" font-size="34" font-weight="700" fill="#131317">'+total+'</text>'+
-        '<text x="100" y="120" text-anchor="middle" font-size="15" fill="#70707A">defect</text></svg>'+
-      '<div style="flex:1;min-width:158px;">'+legend+'</div>'+
-    '</div></div>';
-}
-function rankBarsHtml(list, key, shades){
-  var arr=(list||[]).filter(function(c){return c[key]>0;}).sort(function(a,b){return b[key]-a[key];}).slice(0,5);
-  if(!arr.length) return '<div class="empty-state" style="padding:16px;">ยังไม่มีรายการ</div>';
-  var max=arr[0][key];
-  return arr.map(function(c,i){ var w=Math.max(8,Math.round(c[key]/max*100));
-    return '<div style="margin-bottom:11px;">'+
-      '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">'+
-        '<span style="font-size:12px;font-weight:800;color:'+shades[i]+';width:16px;flex-shrink:0;">'+(i+1)+'</span>'+
-        '<span style="font-size:13.5px;font-weight:600;flex:1;">'+esc(c.name)+'</span>'+
-        '<span style="font-size:13px;font-weight:700;">'+c[key]+'</span></div>'+
-      '<div style="height:10px;border-radius:999px;background:var(--ap-neutral-200);overflow:hidden;"><div style="width:'+w+'%;height:100%;background:'+shades[i]+';border-radius:999px;"></div></div></div>';
-  }).join('');
-}
 function renderDashboardScreen(){
   var D=dashboardData(), T=D.totals;
   var pct=T.all?Math.round(T.done/T.all*100):0;
@@ -680,14 +642,9 @@ function renderDashboardScreen(){
     '<div class="stat stat-green"><b>'+T.done+'</b><span>แก้แล้ว</span></div>'+
     '<div class="stat stat-blue"><b>'+pct+'%</b><span>คืบหน้า</span></div>'+
   '</div>';
-  var majorShades=['#6E1416','#921C1E','#B23033','#CA5A5C','#DE8A8C'];
-  var minorShades=['#6E4A0C','#9B6612','#C0862A','#D9A648','#EBCE84'];
-  var catSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">หมวดที่เจอบ่อย 5 อันดับ</div>'+
-    freqDonutHtml(D.cats, T.all)+
-    '<div style="font-size:15px;font-weight:700;margin:0 0 12px;"><span style="color:#921C1E;">■</span> Major ที่เจอบ่อย 5 อันดับ</div>'+
-    '<div class="card" style="padding:15px 15px 5px;margin-bottom:20px;">'+rankBarsHtml(D.cats,'major',majorShades)+'</div>'+
-    '<div style="font-size:15px;font-weight:700;margin:0 0 12px;"><span style="color:#9B6612;">■</span> Minor ที่เจอบ่อย 5 อันดับ</div>'+
-    '<div class="card" style="padding:15px 15px 5px;margin-bottom:20px;">'+rankBarsHtml(D.cats,'minor',minorShades)+'</div>';
+  var topCats=D.cats.slice(0,8), maxT=topCats.length?topCats[0].total:1;
+  var catSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">หมวดที่เจอบ่อย (ต้องแก้ซ้ำ ๆ)</div>'+
+    '<div class="card" style="padding:15px 15px 4px;margin-bottom:20px;">'+topCats.map(function(c){return freqBarHtml(c,maxT);}).join('')+'</div>';
   var topRooms=D.rooms.slice(0,6);
   var roomSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">ห้อง/ตำแหน่งที่เจอบ่อย</div>'+
     '<div class="card" style="padding:8px 6px;margin-bottom:20px;">'+topRooms.map(function(r){
