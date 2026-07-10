@@ -106,8 +106,6 @@ textarea.fld{ resize:none; line-height:1.45; }
 .chip{ font-size:13px; font-weight:500; padding:8px 14px; border-radius:999px; background:#fff; color:var(--fg-1);
   border:1px solid var(--border-default); display:inline-flex; align-items:center; gap:6px; }
 .chip.is-active{ background:var(--ap-red-600); color:#fff; border-color:var(--ap-red-600); font-weight:600; }
-.chip.chip-del{ border-color:var(--ap-red-600); border-style:dashed; color:var(--ap-red-600); background:#fff; font-weight:600; }
-.chip.chip-del.is-active{ background:#fff; color:var(--ap-red-600); }
 .chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
 
 .sev-chip{ flex:1; text-align:center; font-size:13px; font-weight:600; padding:11px 4px; border-radius:12px; background:#fff; border:1.5px solid var(--border-default); color:var(--fg-2); }
@@ -277,12 +275,10 @@ var STATUS = {
 };
 var STATUS_ORDER = ['open','prog','done'];
 var ROOMS = ['ห้องนั่งเล่น','ครัว','ห้องนอนใหญ่','ห้องนอน 2','ห้องน้ำ','ระเบียง','โรงจอดรถ','ภายนอก'];
-var CAT_KEY='ap_cats_v1', ROOM_KEY='ap_rooms_v1', CAT_DEL_KEY='ap_cats_del_v1', ROOM_DEL_KEY='ap_rooms_del_v1';
+var CAT_KEY='ap_cats_v1', ROOM_KEY='ap_rooms_v1';
 function loadCustomLists(){
   try{ (JSON.parse(localStorage.getItem(CAT_KEY)||'[]')||[]).forEach(function(x){ if(x&&x.id&&x.name&&!CATS.some(function(k){return k.id===x.id;})) CATS.push(x); }); }catch(e){}
   try{ (JSON.parse(localStorage.getItem(ROOM_KEY)||'[]')||[]).forEach(function(x){ if(x&&ROOMS.indexOf(x)<0) ROOMS.push(x); }); }catch(e){}
-  try{ var dc=JSON.parse(localStorage.getItem(CAT_DEL_KEY)||'[]')||[]; if(dc.length) CATS=CATS.filter(function(c){ return dc.indexOf(c.id)<0; }); }catch(e){}
-  try{ var dr=JSON.parse(localStorage.getItem(ROOM_DEL_KEY)||'[]')||[]; if(dr.length) ROOMS=ROOMS.filter(function(r){ return dr.indexOf(r)<0; }); }catch(e){}
 }
 var TYPES = ['บ้านเดี่ยว','บ้านแฝด','ทาวน์โฮม','คอนโดฯ'];
 
@@ -944,11 +940,10 @@ function renderDefectOverlay(){
   var P = findProject(state.curP), U = findUnit(P, state.curU), S = findSheet(U, state.curS);
   var D = isEdit ? findDefect(S, state.editId) : null;
   var curCat = state.formCat, curSev = state.formSev, curRoom = state.formRoom, curStatus = state.formStatus||'open', note = state.formNoteDraft||'';
-  var mCat = state.manageCats, mRoom = state.manageRooms;
-  var catChips = CATS.map(function(c){ return '<span class="chip tapopt'+(c.id===curCat?' is-active':'')+(mCat?' chip-del':'')+'" data-group="cat" data-value="'+c.id+'" data-action="'+(mCat?'del-cat':'pick-chip')+'">'+esc(c.name)+(mCat?' ✕':'')+'</span>'; }).join('') + '<span class="chip tapopt" data-action="add-cat" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;">+ เพิ่มหมวด</span>' + (CATS.length?'<span class="chip tapopt" data-action="toggle-manage-cats" style="border-style:dashed;color:var(--fg-2);font-weight:600;">'+(mCat?'✓ เสร็จ':'จัดการ/ลบ')+'</span>':'');
+  var catChips = CATS.map(function(c){ return '<span class="chip tapopt'+(c.id===curCat?' is-active':'')+'" data-group="cat" data-value="'+c.id+'" data-action="pick-chip">'+esc(c.name)+'</span>'; }).join('') + '<span class="chip tapopt" data-action="add-cat" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;">+ เพิ่มหมวด</span>';
   var sevChips = SEV_ORDER.map(function(id){ return '<span class="sev-chip tapopt'+(id===curSev?' is-active':'')+'" data-group="sev" data-value="'+id+'" data-action="pick-chip">'+esc(SEV[id].name)+'</span>'; }).join('');
   var stChips = STATUS_ORDER.map(function(id){ return '<span class="st-chip tapopt'+(id===curStatus?' is-active':'')+'" data-group="status" data-value="'+id+'" data-action="pick-chip">'+esc(STATUS[id].name)+'</span>'; }).join('');
-  var roomChips = ROOMS.map(function(r){ return '<span class="chip tapopt'+(r===curRoom?' is-active':'')+(mRoom?' chip-del':'')+'" data-group="room" data-value="'+attr(r)+'" data-action="'+(mRoom?'del-room':'pick-chip')+'">'+esc(r)+(mRoom?' ✕':'')+'</span>'; }).join('') + '<span class="chip tapopt" data-action="add-room" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;">+ เพิ่มห้อง</span>' + (ROOMS.length?'<span class="chip tapopt" data-action="toggle-manage-rooms" style="border-style:dashed;color:var(--fg-2);font-weight:600;">'+(mRoom?'✓ เสร็จ':'จัดการ/ลบ')+'</span>':'');
+  var roomChips = ROOMS.map(function(r){ return '<span class="chip tapopt'+(r===curRoom?' is-active':'')+'" data-group="room" data-value="'+attr(r)+'" data-action="pick-chip">'+esc(r)+'</span>'; }).join('') + '<span class="chip tapopt" data-action="add-room" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;">+ เพิ่มห้อง</span>';
   return '<div class="overlay-backdrop tapopt" data-action="close-overlay"></div>' +
   '<div class="overlay-sheet" id="defect-overlay"><div class="sheet-grabber"></div>' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
@@ -961,10 +956,10 @@ function renderDefectOverlay(){
       '<div style="font-size:12px;font-weight:600;color:var(--fg-2);margin-bottom:7px;">หลังแก้ไข (ถ้ามี)</div>' +
       '<div id="defect-photo-strip-after">'+renderPhotoStripHtml('after')+'</div>' +
     '</div>' +
-    '<div class="form-group"><div class="field-label">ห้อง / พื้นที่</div><div class="chip-row">'+roomChips+'</div></div>' +
     '<div class="form-group"><div class="field-label">หมวดหมู่</div><div class="chip-row">'+catChips+'</div></div>' +
     '<div class="form-group"><div class="field-label">ระดับความรุนแรง</div><div style="display:flex;gap:8px;">'+sevChips+'</div></div>' +
     '<div class="form-group"><div class="field-label">สถานะการแก้ไข</div><div style="display:flex;gap:8px;">'+stChips+'</div></div>' +
+    '<div class="form-group"><div class="field-label">ห้อง / พื้นที่</div><div class="chip-row">'+roomChips+'</div></div>' +
     '<div class="form-group"><div class="field-label">รายละเอียด</div>' +
       '<textarea class="fld" id="f-d-note" rows="3" placeholder="พิมพ์รายละเอียดที่พบ…">'+esc(note)+'</textarea></div>' +
     '<button type="button" class="btn-primary tapopt" data-action="submit-defect" style="margin-top:4px;">'+(isEdit?'บันทึกการแก้ไข':'บันทึก defect')+'</button></div>';
@@ -1105,8 +1100,7 @@ function openUnitOverlay(mode,id){ state.overlay='unit'; state.formMode=mode; st
 function openSheetOverlay(mode,id){ state.overlay='sheet'; state.formMode=mode; state.editId=id||null; if(mode!=='edit'){ var P=findProject(state.curP),U=findUnit(P,state.curU); state.formSheetMode=(U&&U.kind==='common')?'common':'handover'; } render(); }
 function openDefectOverlay(mode,id){
   state.overlay='defect'; state.formMode=mode; state.editId=id||null;
-  state.manageCats=false; state.manageRooms=false;
-  state.formCat=(CATS[0]&&CATS[0].id)||''; state.formSev='minor'; state.formRoom=ROOMS[0]||''; state.formNoteDraft=''; state.formStatus='open';
+  state.formCat=CATS[0].id; state.formSev='minor'; state.formRoom=ROOMS[0]; state.formNoteDraft=''; state.formStatus='open';
   if (mode==='edit'){
     var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS),D=findDefect(S,id);
     pendingPhotos=[]; pendingPhotosAfter=[];
@@ -1272,7 +1266,7 @@ function buildBackupBlob(then){
   Promise.all(ids.map(function(id){ return Photos.get(id).then(function(u){ return [id,u]; }); })).then(function(entries){
     var photos={}; entries.forEach(function(e){ if(e[1]) photos[e[0]]=e[1]; });
     var data={ app:'ap-inspect', schema:'v4', version:APP_VERSION, exportedAt:new Date().toISOString(),
-      projects:projects, photos:photos, cats:readList(CAT_KEY), rooms:readList(ROOM_KEY), catsDel:readList(CAT_DEL_KEY), roomsDel:readList(ROOM_DEL_KEY) };
+      projects:projects, photos:photos, cats:readList(CAT_KEY), rooms:readList(ROOM_KEY) };
     then(new Blob([JSON.stringify(data)],{type:'application/json'}));
   });
 }
@@ -1334,8 +1328,6 @@ function importBackupFile(file){
       projects = data.projects; Store.save(projects);
       try{ if(Array.isArray(data.cats)) localStorage.setItem(CAT_KEY, JSON.stringify(data.cats)); }catch(e){}
       try{ if(Array.isArray(data.rooms)) localStorage.setItem(ROOM_KEY, JSON.stringify(data.rooms)); }catch(e){}
-      try{ localStorage.setItem(CAT_DEL_KEY, JSON.stringify(Array.isArray(data.catsDel)?data.catsDel:[])); }catch(e){}
-      try{ localStorage.setItem(ROOM_DEL_KEY, JSON.stringify(Array.isArray(data.roomsDel)?data.roomsDel:[])); }catch(e){}
       if(photoUrlCache && photoUrlCache.clear) photoUrlCache.clear();
       loadCustomLists();
       Object.assign(state,{overlay:null,screen:'projects',curP:null,curU:null,curS:null});
@@ -1460,29 +1452,6 @@ function addRoom(){
   var name=(window.prompt('ชื่อห้อง / พื้นที่ใหม่')||'').trim(); if(!name) return;
   if(ROOMS.indexOf(name)<0){ ROOMS.push(name); try{ var a=JSON.parse(localStorage.getItem(ROOM_KEY)||'[]'); a.push(name); localStorage.setItem(ROOM_KEY,JSON.stringify(a)); }catch(e){} }
   state.formRoom=name; render();
-}
-function removeCategory(id){
-  if(!id) return;
-  var c=CATS.filter(function(k){ return k.id===id; })[0];
-  if(!window.confirm('ลบหมวดหมู่ "'+((c&&c.name)||'')+'" ใช่หรือไม่?\n(รายการ defect เดิมที่ใช้หมวดนี้จะยังแสดงชื่อเดิมอยู่)')) return;
-  captureDefectForm();
-  CATS=CATS.filter(function(k){ return k.id!==id; });
-  try{ var a=(JSON.parse(localStorage.getItem(CAT_KEY)||'[]')||[]).filter(function(x){ return x.id!==id; }); localStorage.setItem(CAT_KEY,JSON.stringify(a)); }catch(e){}
-  try{ var d=JSON.parse(localStorage.getItem(CAT_DEL_KEY)||'[]')||[]; if(d.indexOf(id)<0){ d.push(id); localStorage.setItem(CAT_DEL_KEY,JSON.stringify(d)); } }catch(e){}
-  if(state.formCat===id) state.formCat=(CATS[0]&&CATS[0].id)||'';
-  if(!CATS.length) state.manageCats=false;
-  render();
-}
-function removeRoom(name){
-  if(!name) return;
-  if(!window.confirm('ลบตำแหน่ง / ห้อง "'+name+'" ใช่หรือไม่?\n(รายการ defect เดิมที่ใช้ตำแหน่งนี้จะยังแสดงชื่อเดิมอยู่)')) return;
-  captureDefectForm();
-  ROOMS=ROOMS.filter(function(r){ return r!==name; });
-  try{ var a=(JSON.parse(localStorage.getItem(ROOM_KEY)||'[]')||[]).filter(function(x){ return x!==name; }); localStorage.setItem(ROOM_KEY,JSON.stringify(a)); }catch(e){}
-  try{ var d=JSON.parse(localStorage.getItem(ROOM_DEL_KEY)||'[]')||[]; if(d.indexOf(name)<0){ d.push(name); localStorage.setItem(ROOM_DEL_KEY,JSON.stringify(d)); } }catch(e){}
-  if(state.formRoom===name) state.formRoom=ROOMS[0]||'';
-  if(!ROOMS.length) state.manageRooms=false;
-  render();
 }
 function moveDefect(did,dir){
   var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS); if(!S) return;
@@ -1712,10 +1681,6 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'remove-sheet': if(window.confirm('ลบใบงานตรวจนี้ทั้งหมดใช่หรือไม่? (ลบ defect และรูปทั้งหมดในใบงาน)')) removeSheet(el.getAttribute('data-id')); break;
     case 'add-cat': addCategory(); break;
     case 'add-room': addRoom(); break;
-    case 'del-cat': removeCategory(el.getAttribute('data-value')); break;
-    case 'del-room': removeRoom(el.getAttribute('data-value')); break;
-    case 'toggle-manage-cats': captureDefectForm(); state.manageCats=!state.manageCats; render(); break;
-    case 'toggle-manage-rooms': captureDefectForm(); state.manageRooms=!state.manageRooms; render(); break;
     case 'open-export': openExport(el.getAttribute('data-scope')); break;
     case 'export-pdf': { var scp=state.exportScope||el.getAttribute('data-scope')||'sheet'; exportPDF(scp, el.getAttribute('data-sort')); state.overlay=null; render(); break; }
     case 'annotate-photo': openAnnotate(el.getAttribute('data-target'), el.getAttribute('data-index')); break;
