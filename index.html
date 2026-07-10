@@ -578,6 +578,7 @@ function renderApp(){
   else if (state.overlay==='sheetmenu') overlayHtml = renderSheetMenuOverlay();
   else if (state.overlay==='signs') overlayHtml = renderSignsOverlay();
   else if (state.overlay==='aging') overlayHtml = renderAgingOverlay();
+  else if (state.overlay==='aging-global') overlayHtml = renderGlobalAgingOverlay();
 
   return '<div class="app-shell">' + screenHtml + overlayHtml + '</div>';
 }
@@ -629,6 +630,7 @@ function renderProjectsScreen(){
   return '<div class="screen">' +
     '<div class="topbar">' +
       '<div class="topbar-row"><span style="flex:1;"></span>' +
+        agingBellHtml() +
         iconBtn('open-settings','',IC_GEAR) + '</div>' +
       '<h1>โครงการของฉัน</h1></div>' +
     '<div class="scroll" style="padding:16px;">'+backupReminderHtml()+heading+body+'</div>' +
@@ -821,6 +823,54 @@ function renderAgingOverlay(){
       '<span style="font-size:20px;font-weight:700;">รายการค้างนาน</span>'+
       '<span class="tapopt icon-btn" data-action="close-overlay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"></path></svg></span></div>'+
     '<div style="font-size:12.5px;color:var(--fg-2);margin-bottom:14px;">นับจากวันที่บันทึก · เฉพาะรายการที่ยังไม่ “แก้แล้ว” · แตะเพื่อเปิดแก้ไข</div>'+
+    sections+'</div>';
+}
+function collectAgedDefects(){
+  var out=[];
+  (projects||[]).forEach(function(P){ (P.units||[]).forEach(function(U){ (U.sheets||[]).forEach(function(S){ (S.defects||[]).forEach(function(d){
+    if(d.status==='done') return;
+    var a=defectAgeDays(d); if(a==null||a<7) return;
+    out.push({d:d,P:P,U:U,S:S,age:a});
+  }); }); }); });
+  out.sort(function(x,y){ return y.age-x.age; });
+  return out;
+}
+function agedCounts(){ var o=collectAgedDefects(), c={over7:0,over14:0,total:o.length}; o.forEach(function(x){ if(x.age>=14) c.over14++; else c.over7++; }); return c; }
+function agingBellHtml(){
+  var c=agedCounts();
+  var col=c.over14?'var(--ap-red-700)':'#9B6612';
+  var badge=c.total?'<span style="position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#fff;color:'+col+';font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;border:1.5px solid '+col+';">'+c.total+'</span>':'';
+  return '<span class="tapopt icon-btn" data-action="open-aging-global" style="position:relative;" title="รายการค้างนาน">'+
+    '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>'+badge+'</span>';
+}
+function renderGlobalAgingOverlay(){
+  var list=collectAgedDefects();
+  var o14=list.filter(function(x){return x.age>=14;}), o7=list.filter(function(x){return x.age>=7&&x.age<14;});
+  function gRow(x){
+    var d=x.d, a=x.age, st=STATUS[d.status]||STATUS.open, sv=SEV[normSev(d.sev)]||SEV.minor;
+    var bc=a>=14?'var(--ap-red-600)':'#9B6612';
+    var loc=x.P.name+' · '+(x.U.kind==='common'?'ส่วนกลาง':(x.U.plot?'แปลง '+x.U.plot:x.U.code))+' · ครั้งที่ '+(x.S.round||1);
+    return '<div class="card tapopt" data-action="open-aged-defect" data-pid="'+attr(x.P.id)+'" data-uid="'+attr(x.U.id)+'" data-sid="'+attr(x.S.id)+'" data-did="'+attr(d.id)+'" style="padding:12px 14px;margin-bottom:10px;">'+
+      '<div style="font-size:11.5px;color:var(--fg-3);margin-bottom:4px;">'+esc(loc)+'</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'+
+        '<span style="font-size:14px;font-weight:700;">'+esc(d.room||'')+'</span>'+
+        '<span style="font-size:12px;color:var(--fg-2);">'+esc(catName(d.cat))+'</span>'+
+        '<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+bc+';white-space:nowrap;">ค้าง '+a+' วัน</span></div>'+
+      '<div style="font-size:12.5px;color:var(--fg-1);margin-bottom:7px;">'+esc(d.note||'')+'</div>'+
+      '<div style="display:flex;gap:7px;align-items:center;">'+
+        '<span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:'+st.bg+';color:'+st.color+';">'+esc(st.name)+'</span>'+
+        '<span style="font-size:11px;color:'+sv.color+';font-weight:600;">'+esc(sv.name)+'</span></div></div>';
+  }
+  var sections='';
+  if(o14.length) sections+='<div style="font-size:13px;font-weight:700;color:var(--ap-red-600);margin:4px 0 9px;">เกิน 14 วัน ('+o14.length+')</div>'+o14.map(gRow).join('');
+  if(o7.length) sections+='<div style="font-size:13px;font-weight:700;color:#9B6612;margin:'+(o14.length?'16px':'4px')+' 0 9px;">เกิน 7 วัน ('+o7.length+')</div>'+o7.map(gRow).join('');
+  if(!list.length) sections='<div class="empty-state">ไม่มีรายการค้างเกิน 7 วัน</div>';
+  return '<div class="overlay-backdrop tapopt" data-action="close-overlay"></div>'+
+  '<div class="overlay-sheet"><div class="sheet-grabber"></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'+
+      '<span style="font-size:20px;font-weight:700;">รายการค้างนาน</span>'+
+      '<span class="tapopt icon-btn" data-action="close-overlay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"></path></svg></span></div>'+
+    '<div style="font-size:12.5px;color:var(--fg-2);margin-bottom:14px;">ทุกโครงการ · นับจากวันที่บันทึก · เฉพาะที่ยังไม่ “แก้แล้ว” · แตะเพื่อเปิดแก้ไข</div>'+
     sections+'</div>';
 }
 function renderSheetScreen(){
@@ -1760,6 +1810,8 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'open-sheetmenu': state.overlay='sheetmenu'; render(); break;
     case 'open-signs': state.overlay='signs'; render(); break;
     case 'open-aging': state.overlay='aging'; render(); break;
+    case 'open-aging-global': state.overlay='aging-global'; render(); break;
+    case 'open-aged-defect': { state.curP=el.getAttribute('data-pid'); state.curU=el.getAttribute('data-uid'); state.curS=el.getAttribute('data-sid'); state.screen='deflist'; openDefectOverlay('edit', el.getAttribute('data-did')); break; }
     case 'back-sheet': backToSheet(); break;
     case 'back-projects': gotoProjects(); break;
     case 'back-project': backToProject(); break;
