@@ -622,31 +622,6 @@ function freqBarHtml(c, maxT){
       '<div style="width:'+majW+'%;background:#921C1E;"></div><div style="flex:1;background:#9B6612;"></div></div>'+
     '<div style="font-size:11.5px;color:var(--fg-2);margin-top:4px;">Major '+c.major+' · Minor '+c.minor+' · พบใน '+c.unitCount+' แปลง'+(c.open?' · <span style="color:var(--ap-red-700);font-weight:700;">ค้าง '+c.open+'</span>':'')+'</div></div>';
 }
-function freqDonutHtml(cats, total){
-  var palette=['#921C1E','#E0782E','#E0B92E','#3F8F5E','#3E6D8E'];
-  var items=cats.slice(0,5).map(function(c,i){ return {name:c.name,val:c.total,color:palette[i]}; });
-  var used=items.reduce(function(a,x){return a+x.val;},0);
-  if(total-used>0) items.push({name:'อื่น ๆ',val:total-used,color:'#B0B3BA'});
-  var r=70, C=2*Math.PI*r, off=0;
-  var segs=items.map(function(x){
-    var len=(total?x.val/total:0)*C;
-    var seg='<circle cx="100" cy="100" r="'+r+'" fill="none" stroke="'+x.color+'" stroke-width="30" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 100 100)"></circle>';
-    off+=len; return seg;
-  }).join('');
-  var legend=items.map(function(x){ var p=total?Math.round(x.val/total*100):0;
-    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">'+
-      '<span style="width:12px;height:12px;border-radius:3px;background:'+x.color+';flex-shrink:0;"></span>'+
-      '<span style="font-size:13px;font-weight:600;flex:1;">'+esc(x.name)+'</span>'+
-      '<span style="font-size:12px;color:var(--fg-2);">'+x.val+' · '+p+'%</span></div>';
-  }).join('');
-  return '<div class="card" style="padding:16px;margin-bottom:20px;">'+
-    '<div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;">'+
-      '<svg width="168" height="168" viewBox="0 0 200 200" style="flex-shrink:0;">'+segs+
-        '<text x="100" y="94" text-anchor="middle" font-size="34" font-weight="700" fill="#131317">'+total+'</text>'+
-        '<text x="100" y="120" text-anchor="middle" font-size="15" fill="#70707A">defect</text></svg>'+
-      '<div style="flex:1;min-width:158px;">'+legend+'</div>'+
-    '</div></div>';
-}
 function rankBarsHtml(list, key, shades){
   var arr=(list||[]).filter(function(c){return c[key]>0;}).sort(function(a,b){return b[key]-a[key];}).slice(0,5);
   if(!arr.length) return '<div class="empty-state" style="padding:16px;">ยังไม่มีรายการ</div>';
@@ -679,7 +654,7 @@ function sevDonutHtml(cats, key, palette, sevLabel){
   if(!total) return '<div class="card" style="padding:18px;margin-bottom:20px;"><div class="empty-state" style="padding:8px;">ยังไม่มีรายการ '+esc(sevLabel)+'</div></div>';
   var items=arr.slice(0,5).map(function(c,i){return {name:c.name,val:c[key],color:palette[i]};});
   var used=items.reduce(function(a,x){return a+x.val;},0);
-  if(total-used>0) items.push({name:'อื่น ๆ',val:total-used,color:'#B0B3BA'});
+  if(total-used>0) items.push({name:'อื่น ๆ',val:total-used,color:'#D8D3CB'});
   var r=70, C=2*Math.PI*r, off=0;
   var segs=items.map(function(x){ var len=x.val/total*C;
     var seg='<circle cx="100" cy="100" r="'+r+'" fill="none" stroke="'+x.color+'" stroke-width="30" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 100 100)"></circle>';
@@ -688,22 +663,22 @@ function sevDonutHtml(cats, key, palette, sevLabel){
   var legend=items.map(function(x){ var p=Math.round(x.val/total*100);
     return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">'+
       '<span style="width:12px;height:12px;border-radius:3px;background:'+x.color+';flex-shrink:0;"></span>'+
-      '<span style="font-size:13px;font-weight:600;flex:1;">'+esc(x.name)+'</span>'+
+      '<span style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(x.name)+'</span>'+
       '<span style="font-size:12px;color:var(--fg-2);">'+x.val+' · '+p+'%</span></div>';
   }).join('');
   return '<div class="card" style="padding:16px;margin-bottom:20px;">'+
-    '<div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;">'+
-      '<svg width="164" height="164" viewBox="0 0 200 200" style="flex-shrink:0;">'+segs+
+    '<div style="display:flex;align-items:center;gap:14px;">'+
+      '<svg width="140" height="140" viewBox="0 0 200 200" style="flex-shrink:0;">'+segs+
         '<text x="100" y="93" text-anchor="middle" font-size="34" font-weight="700" fill="#131317">'+total+'</text>'+
         '<text x="100" y="119" text-anchor="middle" font-size="14" fill="#70707A">'+esc(sevLabel)+'</text></svg>'+
-      '<div style="flex:1;min-width:158px;">'+legend+'</div></div></div>';
+      '<div style="flex:1;min-width:0;">'+legend+'</div></div></div>';
 }
 function avgCloseDays(){
-  var sum=0,n=0;
+  var sum=0,n=0,mn=null,mx=null;
   (projects||[]).forEach(function(P){(P.units||[]).forEach(function(U){(U.sheets||[]).forEach(function(S){(S.defects||[]).forEach(function(d){
-    if(d.status==='done' && d.doneAt && d.createdAt && d.doneAt>=d.createdAt){ sum+=(d.doneAt-d.createdAt); n++; }
+    if(d.status==='done' && d.doneAt && d.createdAt && d.doneAt>=d.createdAt){ var days=(d.doneAt-d.createdAt)/86400000; sum+=days; n++; if(mn==null||days<mn) mn=days; if(mx==null||days>mx) mx=days; }
   });});});});
-  return n?{avg:sum/n/86400000, n:n}:null;
+  return n?{avg:sum/n,min:mn,max:mx,n:n}:null;
 }
 function renderDashboardScreen(){
   var D=dashboardData(), T=D.totals;
@@ -725,8 +700,8 @@ function renderDashboardScreen(){
     '<div class="stat stat-green"><b>'+T.done+'</b><span>แก้แล้ว</span></div>'+
     '<div class="stat stat-blue"><b>'+pct+'%</b><span>คืบหน้า</span></div>'+
   '</div>';
-  var majorPalette=['#7A1416','#B2261F','#D2542B','#E08050','#EAB08E'];
-  var minorPalette=['#6E4A0C','#9B6612','#C0862A','#D9A648','#EBCE84'];
+  var majorPalette=['#8FC7E8','#A6D9A8','#F3DE8A','#F2A0A0','#F6C48A'];
+  var minorPalette=['#8FC7E8','#A6D9A8','#F3DE8A','#F2A0A0','#F6C48A'];
   var catSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">หมวดที่เจอบ่อย 5 อันดับ</div>'+
     catColumnsHtml(D.cats)+
     '<div style="font-size:15px;font-weight:700;margin:0 0 12px;"><span style="color:#921C1E;">●</span> Major เจอบ่อย 5 อันดับ</div>'+
@@ -738,7 +713,11 @@ function renderDashboardScreen(){
     '<div class="card" style="padding:24px 20px;margin-bottom:20px;text-align:center;">'+
     (_ac
       ? '<div style="font-size:52px;font-weight:800;color:var(--ap-red-700);line-height:1;">'+_ac.avg.toFixed(1)+'<span style="font-size:22px;font-weight:700;color:var(--fg-2);"> วัน</span></div>'+
-        '<div style="font-size:12.5px;color:var(--fg-2);margin-top:10px;">เฉลี่ยจากงานที่แก้แล้ว '+_ac.n+' รายการ · นับจากวันบันทึกถึงวันแก้เสร็จ</div>'
+        '<div style="font-size:12.5px;color:var(--fg-2);margin-top:10px;">เฉลี่ยจากงานที่แก้แล้ว '+_ac.n+' รายการ · นับจากวันบันทึกถึงวันแก้เสร็จ</div>'+
+        '<div style="display:flex;gap:10px;margin-top:18px;">'+
+          '<div style="flex:1;background:var(--ap-neutral-100);border:1px solid var(--border-subtle);border-radius:12px;padding:12px;"><div style="font-size:26px;font-weight:800;color:#921C1E;line-height:1;">'+_ac.max.toFixed(1)+'</div><div style="font-size:11.5px;color:var(--fg-2);margin-top:4px;">นานสุด (วัน)</div></div>'+
+          '<div style="flex:1;background:var(--ap-neutral-100);border:1px solid var(--border-subtle);border-radius:12px;padding:12px;"><div style="font-size:26px;font-weight:800;color:#2F7A4F;line-height:1;">'+_ac.min.toFixed(1)+'</div><div style="font-size:11.5px;color:var(--fg-2);margin-top:4px;">เร็วสุด (วัน)</div></div>'+
+        '</div>'
       : '<div style="font-size:40px;font-weight:800;color:var(--fg-3);line-height:1;">—</div>'+
         '<div style="font-size:12.5px;color:var(--fg-2);margin-top:10px;">ยังไม่มีข้อมูลพอ · ระบบจะเริ่มคำนวณจากงานที่กด “แก้แล้ว” ตั้งแต่นี้เป็นต้นไป</div>')+
     '</div>';
