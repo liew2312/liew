@@ -660,6 +660,51 @@ function rankBarsHtml(list, key, shades){
       '<div style="height:10px;border-radius:999px;background:var(--ap-neutral-200);overflow:hidden;"><div style="width:'+w+'%;height:100%;background:'+shades[i]+';border-radius:999px;"></div></div></div>';
   }).join('');
 }
+function catColumnsHtml(cats){
+  var arr=cats.slice(0,5); if(!arr.length) return '';
+  var palette=['#921C1E','#E0782E','#E0B92E','#3F8F5E','#3E6D8E'];
+  var max=arr[0].total||1;
+  var cols=arr.map(function(c,i){ var h=Math.max(8,Math.round(c.total/max*130));
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;justify-content:flex-end;">'+
+      '<div style="font-size:14px;font-weight:800;color:'+palette[i]+';">'+c.total+'</div>'+
+      '<div style="width:74%;max-width:38px;height:'+h+'px;background:linear-gradient(180deg,'+palette[i]+' 0%,'+palette[i]+'CC 100%);border-radius:8px 8px 0 0;"></div>'+
+      '<div style="font-size:11px;color:var(--fg-2);text-align:center;line-height:1.25;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(c.name)+'</div></div>';
+  }).join('');
+  return '<div class="card" style="padding:16px 14px 14px;margin-bottom:20px;">'+
+    '<div style="display:flex;align-items:flex-end;gap:10px;">'+cols+'</div></div>';
+}
+function sevDonutHtml(cats, key, palette, sevLabel){
+  var arr=cats.filter(function(c){return c[key]>0;}).sort(function(a,b){return b[key]-a[key];});
+  var total=arr.reduce(function(a,c){return a+c[key];},0);
+  if(!total) return '<div class="card" style="padding:18px;margin-bottom:20px;"><div class="empty-state" style="padding:8px;">ยังไม่มีรายการ '+esc(sevLabel)+'</div></div>';
+  var items=arr.slice(0,5).map(function(c,i){return {name:c.name,val:c[key],color:palette[i]};});
+  var used=items.reduce(function(a,x){return a+x.val;},0);
+  if(total-used>0) items.push({name:'อื่น ๆ',val:total-used,color:'#B0B3BA'});
+  var r=70, C=2*Math.PI*r, off=0;
+  var segs=items.map(function(x){ var len=x.val/total*C;
+    var seg='<circle cx="100" cy="100" r="'+r+'" fill="none" stroke="'+x.color+'" stroke-width="30" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 100 100)"></circle>';
+    off+=len; return seg;
+  }).join('');
+  var legend=items.map(function(x){ var p=Math.round(x.val/total*100);
+    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">'+
+      '<span style="width:12px;height:12px;border-radius:3px;background:'+x.color+';flex-shrink:0;"></span>'+
+      '<span style="font-size:13px;font-weight:600;flex:1;">'+esc(x.name)+'</span>'+
+      '<span style="font-size:12px;color:var(--fg-2);">'+x.val+' · '+p+'%</span></div>';
+  }).join('');
+  return '<div class="card" style="padding:16px;margin-bottom:20px;">'+
+    '<div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;">'+
+      '<svg width="164" height="164" viewBox="0 0 200 200" style="flex-shrink:0;">'+segs+
+        '<text x="100" y="93" text-anchor="middle" font-size="34" font-weight="700" fill="#131317">'+total+'</text>'+
+        '<text x="100" y="119" text-anchor="middle" font-size="14" fill="#70707A">'+esc(sevLabel)+'</text></svg>'+
+      '<div style="flex:1;min-width:158px;">'+legend+'</div></div></div>';
+}
+function avgCloseDays(){
+  var sum=0,n=0;
+  (projects||[]).forEach(function(P){(P.units||[]).forEach(function(U){(U.sheets||[]).forEach(function(S){(S.defects||[]).forEach(function(d){
+    if(d.status==='done' && d.doneAt && d.createdAt && d.doneAt>=d.createdAt){ sum+=(d.doneAt-d.createdAt); n++; }
+  });});});});
+  return n?{avg:sum/n/86400000, n:n}:null;
+}
 function renderDashboardScreen(){
   var D=dashboardData(), T=D.totals;
   var pct=T.all?Math.round(T.done/T.all*100):0;
@@ -680,38 +725,48 @@ function renderDashboardScreen(){
     '<div class="stat stat-green"><b>'+T.done+'</b><span>แก้แล้ว</span></div>'+
     '<div class="stat stat-blue"><b>'+pct+'%</b><span>คืบหน้า</span></div>'+
   '</div>';
-  var majorShades=['#6E1416','#921C1E','#B23033','#CA5A5C','#DE8A8C'];
-  var minorShades=['#6E4A0C','#9B6612','#C0862A','#D9A648','#EBCE84'];
+  var majorPalette=['#7A1416','#B2261F','#D2542B','#E08050','#EAB08E'];
+  var minorPalette=['#6E4A0C','#9B6612','#C0862A','#D9A648','#EBCE84'];
   var catSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">หมวดที่เจอบ่อย 5 อันดับ</div>'+
-    freqDonutHtml(D.cats, T.all)+
-    '<div style="font-size:15px;font-weight:700;margin:0 0 12px;"><span style="color:#921C1E;">■</span> Major ที่เจอบ่อย 5 อันดับ</div>'+
-    '<div class="card" style="padding:15px 15px 5px;margin-bottom:20px;">'+rankBarsHtml(D.cats,'major',majorShades)+'</div>'+
-    '<div style="font-size:15px;font-weight:700;margin:0 0 12px;"><span style="color:#9B6612;">■</span> Minor ที่เจอบ่อย 5 อันดับ</div>'+
-    '<div class="card" style="padding:15px 15px 5px;margin-bottom:20px;">'+rankBarsHtml(D.cats,'minor',minorShades)+'</div>';
-  var topRooms=D.rooms.slice(0,6);
-  var roomSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">ห้อง/ตำแหน่งที่เจอบ่อย</div>'+
-    '<div class="card" style="padding:8px 6px;margin-bottom:20px;">'+topRooms.map(function(r){
-      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid var(--border-subtle);">'+
-        '<span style="font-size:13.5px;font-weight:600;flex:1;">'+esc(r.name)+'</span>'+
-        '<span style="font-size:11.5px;color:#921C1E;">M '+r.major+'</span>'+
-        '<span style="font-size:11.5px;color:#9B6612;">m '+r.minor+'</span>'+
-        '<span style="font-size:13px;font-weight:700;min-width:22px;text-align:right;">'+r.total+'</span></div>';
-    }).join('').replace(/border-bottom:1px solid var\(--border-subtle\);"><span style="font-size:13.5px;font-weight:600;flex:1;">([^<]*)<\/span><span style="font-size:11.5px;color:#921C1E;">M [0-9]+<\/span><span style="font-size:11.5px;color:#9B6612;">m [0-9]+<\/span><span style="font-size:13px;font-weight:700;min-width:22px;text-align:right;">[0-9]+<\/span><\/div>$/, function(m){return m;})+'</div>';
-  var projSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">สรุปรายโครงการ</div>'+projects.map(function(p){
+    catColumnsHtml(D.cats)+
+    '<div style="font-size:15px;font-weight:700;margin:0 0 12px;"><span style="color:#921C1E;">●</span> Major เจอบ่อย 5 อันดับ</div>'+
+    sevDonutHtml(D.cats,'major',majorPalette,'Major')+
+    '<div style="font-size:15px;font-weight:700;margin:0 0 12px;"><span style="color:#9B6612;">●</span> Minor เจอบ่อย 5 อันดับ</div>'+
+    sevDonutHtml(D.cats,'minor',minorPalette,'Minor')+'';
+  var _ac=avgCloseDays();
+  var avgCard='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">ระยะเวลาเก็บงานเฉลี่ย</div>'+
+    '<div class="card" style="padding:24px 20px;margin-bottom:20px;text-align:center;">'+
+    (_ac
+      ? '<div style="font-size:52px;font-weight:800;color:var(--ap-red-700);line-height:1;">'+_ac.avg.toFixed(1)+'<span style="font-size:22px;font-weight:700;color:var(--fg-2);"> วัน</span></div>'+
+        '<div style="font-size:12.5px;color:var(--fg-2);margin-top:10px;">เฉลี่ยจากงานที่แก้แล้ว '+_ac.n+' รายการ · นับจากวันบันทึกถึงวันแก้เสร็จ</div>'
+      : '<div style="font-size:40px;font-weight:800;color:var(--fg-3);line-height:1;">—</div>'+
+        '<div style="font-size:12.5px;color:var(--fg-2);margin-top:10px;">ยังไม่มีข้อมูลพอ · ระบบจะเริ่มคำนวณจากงานที่กด “แก้แล้ว” ตั้งแต่นี้เป็นต้นไป</div>')+
+    '</div>';
+  function _dot(c,t){ return '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:3px;background:'+c+';display:inline-block;"></span>'+t+'</span>'; }
+  var projLegend='<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--fg-2);margin:0 0 12px;">'+_dot('#2F7A4F','แก้แล้ว')+_dot('#921C1E','Major ค้าง')+_dot('#E0A82E','Minor ค้าง')+'</div>';
+  var projSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">สรุปรายโครงการ</div>'+projLegend+projects.map(function(p){
     var ds=projDefects(p), total=ds.length, prog=progressOf(ds), open=openOf(ds);
+    var done=ds.filter(function(d){return d.status==='done';}).length;
+    var oMaj=ds.filter(function(d){return d.status!=='done'&&normSev(d.sev)==='major';}).length;
+    var oMin=ds.filter(function(d){return d.status!=='done'&&normSev(d.sev)==='minor';}).length;
     var maj=ds.filter(function(d){return normSev(d.sev)==='major';}).length, mn=total-maj;
     var units=(p.units||[]).filter(function(u){return u.kind!=='common';}).length;
-    return '<div class="card tapopt" data-action="open-project" data-id="'+attr(p.id)+'" style="padding:13px 15px;margin-bottom:10px;">'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:15px;font-weight:700;flex:1;">'+esc(p.name)+'</span><span style="font-size:12px;font-weight:700;color:var(--ap-red-700);">'+prog+'%</span></div>'+
-      '<div class="progress-track" style="margin-bottom:9px;"><div class="progress-fill" style="width:'+prog+'%;"></div></div>'+
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--fg-2);">'+
+    var wD=total?done/total*100:0, wMaj=total?oMaj/total*100:0, wMin=total?oMin/total*100:0;
+    var bar='<div style="display:flex;height:20px;border-radius:999px;overflow:hidden;background:var(--ap-neutral-200);margin-bottom:11px;">'+
+      (wD?'<div style="width:'+wD+'%;background:#2F7A4F;"></div>':'')+
+      (wMaj?'<div style="width:'+wMaj+'%;background:#921C1E;"></div>':'')+
+      (wMin?'<div style="width:'+wMin+'%;background:#E0A82E;"></div>':'')+'</div>';
+    return '<div class="card tapopt" data-action="open-project" data-id="'+attr(p.id)+'" style="padding:16px 17px;margin-bottom:12px;">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;"><span style="font-size:16px;font-weight:700;flex:1;">'+esc(p.name)+'</span><span style="font-size:15px;font-weight:800;color:#2F7A4F;">'+prog+'%</span></div>'+
+      bar+
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--fg-2);">'+
         '<span>แปลง <b style="color:var(--fg-1);">'+units+'</b></span>'+
         '<span>defect <b style="color:var(--fg-1);">'+total+'</b></span>'+
         '<span style="color:#921C1E;">Major <b>'+maj+'</b></span>'+
         '<span style="color:#9B6612;">Minor <b>'+mn+'</b></span>'+
         '<span>ค้าง <b style="color:var(--fg-1);">'+open+'</b></span></div></div>';
   }).join('');
-  return '<div class="screen">'+head+'<div class="scroll" style="padding:16px;">'+kpi+catSec+roomSec+projSec+'</div></div>';
+  return '<div class="screen">'+head+'<div class="scroll" style="padding:16px;">'+kpi+catSec+avgCard+projSec+'</div></div>';
 }
 function renderProjectsScreen(){
   var body, overview='', heading='';
@@ -1572,7 +1627,7 @@ function bulkDoneVisible(){
   });
   if(!targets.length){ window.alert('ไม่มีรายการที่ยังไม่แก้ในมุมมองที่แสดงอยู่'); return; }
   if(!window.confirm('ทำเครื่องหมาย “แก้แล้ว” ให้ '+targets.length+' รายการที่แสดงอยู่?')) return;
-  targets.forEach(function(d){ d.status='done'; }); persist(); render();
+  targets.forEach(function(d){ d.status='done'; if(!d.doneAt) d.doneAt=Date.now(); }); persist(); render();
 }
 function importBackupFile(file){
   if(!file) return;
@@ -1648,8 +1703,8 @@ function submitDefectForm(){
   Promise.all([resolveSet(pendingPhotos), resolveSet(pendingPhotosAfter)])
     .then(function(res){
       var photoIds=res[0], photoIdsAfter=res[1];
-      if(state.formMode==='edit'){ var D=findDefect(S,state.editId); if(D){ D.cat=cat; D.sev=sev; D.room=room; D.status=status; D.note=note; D.photoIds=photoIds; D.photoIdsAfter=photoIdsAfter; } state.scrollToDefect=state.editId; }
-      else { var nid=uid(); S.defects.push({id:nid,room:room,cat:cat,sev:sev,status:status,note:note,photoIds:photoIds,photoIdsAfter:photoIdsAfter,time:now,createdAt:Date.now()}); state.scrollToDefect=nid; }
+      if(state.formMode==='edit'){ var D=findDefect(S,state.editId); if(D){ D.cat=cat; D.sev=sev; D.room=room; D.status=status; D.note=note; D.photoIds=photoIds; D.photoIdsAfter=photoIdsAfter; if(status==='done'){ if(!D.doneAt) D.doneAt=Date.now(); } else { D.doneAt=null; } } state.scrollToDefect=state.editId; }
+      else { var nid=uid(); S.defects.push({id:nid,room:room,cat:cat,sev:sev,status:status,note:note,photoIds:photoIds,photoIdsAfter:photoIdsAfter,time:now,createdAt:Date.now(),doneAt:(status==='done'?Date.now():null)}); state.scrollToDefect=nid; }
       persist(); state.overlay=null; pendingPhotos=[]; pendingPhotosAfter=[]; render();
     });
 }
@@ -1670,7 +1725,7 @@ function removeSignature(role){
 }
 function cycleDefectStatus(did){
   var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS),D=findDefect(S,did);
-  if(!D) return; D.status=STATUS_ORDER[(STATUS_ORDER.indexOf(D.status)+1)%STATUS_ORDER.length]; persist(); render();
+  if(!D) return; D.status=STATUS_ORDER[(STATUS_ORDER.indexOf(D.status)+1)%STATUS_ORDER.length]; if(D.status==='done'){ if(!D.doneAt) D.doneAt=Date.now(); } else { D.doneAt=null; } persist(); render();
 }
 function removeDefect(did){
   var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS); if(!S) return;
