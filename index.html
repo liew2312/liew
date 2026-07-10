@@ -565,6 +565,7 @@ function renderApp(){
   else if (state.screen==='unit') screenHtml = renderUnitScreen();
   else if (state.screen==='sheet') screenHtml = renderSheetScreen();
   else if (state.screen==='deflist') screenHtml = renderDefectListScreen();
+  else if (state.screen==='dashboard') screenHtml = renderDashboardScreen();
 
   var overlayHtml = '';
   if (state.overlay==='project') overlayHtml = renderProjectOverlay();
@@ -595,6 +596,80 @@ var IC_BACK='<path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path>';
 var IC_GEAR='<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>';
 
 /* ---------- screen: projects (home) ---------- */
+function dashboardData(){
+  var totals={all:0,major:0,minor:0,open:0,done:0};
+  var catMap={}, roomMap={};
+  (projects||[]).forEach(function(P){ (P.units||[]).forEach(function(U){ (U.sheets||[]).forEach(function(S){ (S.defects||[]).forEach(function(d){
+    var sv=normSev(d.sev); totals.all++; totals[sv]++;
+    if(d.status==='done') totals.done++; else totals.open++;
+    var c=catMap[d.cat]||(catMap[d.cat]={name:catName(d.cat),total:0,major:0,minor:0,open:0,units:{}});
+    c.total++; c[sv]++; if(d.status!=='done') c.open++; c.units[U.id]=1;
+    var rn=d.room||'-'; var r=roomMap[rn]||(roomMap[rn]={name:rn,total:0,major:0,minor:0,open:0});
+    r.total++; r[sv]++; if(d.status!=='done') r.open++;
+  }); }); }); });
+  var cats=Object.keys(catMap).map(function(k){ var c=catMap[k]; c.unitCount=Object.keys(c.units).length; return c; }).sort(function(a,b){return b.total-a.total || b.open-a.open;});
+  var rooms=Object.keys(roomMap).map(function(k){return roomMap[k];}).sort(function(a,b){return b.total-a.total;});
+  return {totals:totals, cats:cats, rooms:rooms};
+}
+function freqBarHtml(c, maxT){
+  var w=Math.max(6, Math.round(c.total/(maxT||1)*100));
+  var majW=c.total?Math.round(c.major/c.total*100):0;
+  return '<div style="margin-bottom:13px;">'+
+    '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">'+
+      '<span style="font-size:13.5px;font-weight:700;flex:1;">'+esc(c.name)+'</span>'+
+      '<span style="font-size:13px;font-weight:700;">'+c.total+'</span></div>'+
+    '<div style="height:12px;border-radius:999px;background:var(--ap-neutral-200);overflow:hidden;width:'+w+'%;min-width:26px;display:flex;">'+
+      '<div style="width:'+majW+'%;background:#921C1E;"></div><div style="flex:1;background:#9B6612;"></div></div>'+
+    '<div style="font-size:11.5px;color:var(--fg-2);margin-top:4px;">Major '+c.major+' · Minor '+c.minor+' · พบใน '+c.unitCount+' แปลง'+(c.open?' · <span style="color:var(--ap-red-700);font-weight:700;">ค้าง '+c.open+'</span>':'')+'</div></div>';
+}
+function renderDashboardScreen(){
+  var D=dashboardData(), T=D.totals;
+  var pct=T.all?Math.round(T.done/T.all*100):0;
+  var head='<div class="topbar"><div class="topbar-row">'+
+      '<span class="tapopt back-link" data-action="back-projects" style="flex:1;font-size:22px;font-weight:700;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">'+IC_BACK+'</svg><span>แดชบอร์ด</span></span>'+
+      iconBtn('back-projects','',IC_HOME)+'</div>'+
+      '<div class="sub">สรุปภาพรวมทุกโครงการ</div></div>';
+  if(!T.all){
+    return '<div class="screen">'+head+'<div class="scroll" style="padding:16px;"><div class="empty-state">ยังไม่มีข้อมูล defect ให้สรุป</div></div></div>';
+  }
+  var kpi='<div class="stat-row" style="margin:0 0 8px;">'+
+    '<div class="stat"><b>'+T.all+'</b><span>defect ทั้งหมด</span></div>'+
+    '<div class="stat" style="border-color:#921C1E;"><b style="color:#921C1E;">'+T.major+'</b><span>Major</span></div>'+
+    '<div class="stat" style="border-color:#9B6612;"><b style="color:#9B6612;">'+T.minor+'</b><span>Minor</span></div>'+
+  '</div>'+
+  '<div class="stat-row" style="margin:0 0 20px;">'+
+    '<div class="stat stat-red"><b>'+T.open+'</b><span>ยังไม่แก้</span></div>'+
+    '<div class="stat stat-green"><b>'+T.done+'</b><span>แก้แล้ว</span></div>'+
+    '<div class="stat stat-blue"><b>'+pct+'%</b><span>คืบหน้า</span></div>'+
+  '</div>';
+  var topCats=D.cats.slice(0,8), maxT=topCats.length?topCats[0].total:1;
+  var catSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">หมวดที่เจอบ่อย (ต้องแก้ซ้ำ ๆ)</div>'+
+    '<div class="card" style="padding:15px 15px 4px;margin-bottom:20px;">'+topCats.map(function(c){return freqBarHtml(c,maxT);}).join('')+'</div>';
+  var topRooms=D.rooms.slice(0,6);
+  var roomSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">ห้อง/ตำแหน่งที่เจอบ่อย</div>'+
+    '<div class="card" style="padding:8px 6px;margin-bottom:20px;">'+topRooms.map(function(r){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid var(--border-subtle);">'+
+        '<span style="font-size:13.5px;font-weight:600;flex:1;">'+esc(r.name)+'</span>'+
+        '<span style="font-size:11.5px;color:#921C1E;">M '+r.major+'</span>'+
+        '<span style="font-size:11.5px;color:#9B6612;">m '+r.minor+'</span>'+
+        '<span style="font-size:13px;font-weight:700;min-width:22px;text-align:right;">'+r.total+'</span></div>';
+    }).join('').replace(/border-bottom:1px solid var\(--border-subtle\);"><span style="font-size:13.5px;font-weight:600;flex:1;">([^<]*)<\/span><span style="font-size:11.5px;color:#921C1E;">M [0-9]+<\/span><span style="font-size:11.5px;color:#9B6612;">m [0-9]+<\/span><span style="font-size:13px;font-weight:700;min-width:22px;text-align:right;">[0-9]+<\/span><\/div>$/, function(m){return m;})+'</div>';
+  var projSec='<div style="font-size:15px;font-weight:700;margin:0 0 12px;">สรุปรายโครงการ</div>'+projects.map(function(p){
+    var ds=projDefects(p), total=ds.length, prog=progressOf(ds), open=openOf(ds);
+    var maj=ds.filter(function(d){return normSev(d.sev)==='major';}).length, mn=total-maj;
+    var units=(p.units||[]).filter(function(u){return u.kind!=='common';}).length;
+    return '<div class="card tapopt" data-action="open-project" data-id="'+attr(p.id)+'" style="padding:13px 15px;margin-bottom:10px;">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:15px;font-weight:700;flex:1;">'+esc(p.name)+'</span><span style="font-size:12px;font-weight:700;color:var(--ap-red-700);">'+prog+'%</span></div>'+
+      '<div class="progress-track" style="margin-bottom:9px;"><div class="progress-fill" style="width:'+prog+'%;"></div></div>'+
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--fg-2);">'+
+        '<span>แปลง <b style="color:var(--fg-1);">'+units+'</b></span>'+
+        '<span>defect <b style="color:var(--fg-1);">'+total+'</b></span>'+
+        '<span style="color:#921C1E;">Major <b>'+maj+'</b></span>'+
+        '<span style="color:#9B6612;">Minor <b>'+mn+'</b></span>'+
+        '<span>ค้าง <b style="color:var(--fg-1);">'+open+'</b></span></div></div>';
+  }).join('');
+  return '<div class="screen">'+head+'<div class="scroll" style="padding:16px;">'+kpi+catSec+roomSec+projSec+'</div></div>';
+}
 function renderProjectsScreen(){
   var body, overview='', heading='';
   if (!projects.length){
@@ -629,7 +704,9 @@ function renderProjectsScreen(){
   }
   return '<div class="screen">' +
     '<div class="topbar">' +
-      '<div class="topbar-row"><span style="flex:1;"></span>' +
+      '<div class="topbar-row">' +
+        '<span class="tapopt icon-btn" data-action="open-dashboard" title="แดชบอร์ด"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 3v18h18"></path><rect x="7" y="11" width="3" height="6"></rect><rect x="12" y="7" width="3" height="10"></rect><rect x="17" y="13" width="3" height="4"></rect></svg></span>' +
+        '<span style="flex:1;"></span>' +
         agingBellHtml() +
         iconBtn('open-settings','',IC_GEAR) + '</div>' +
       '<h1>โครงการของฉัน</h1></div>' +
@@ -1811,6 +1888,7 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'open-signs': state.overlay='signs'; render(); break;
     case 'open-aging': state.overlay='aging'; render(); break;
     case 'open-aging-global': state.overlay='aging-global'; render(); break;
+    case 'open-dashboard': Object.assign(state,{screen:'dashboard',overlay:null}); render(); break;
     case 'open-aged-defect': { state.curP=el.getAttribute('data-pid'); state.curU=el.getAttribute('data-uid'); state.curS=el.getAttribute('data-sid'); state.screen='deflist'; openDefectOverlay('edit', el.getAttribute('data-did')); break; }
     case 'back-sheet': backToSheet(); break;
     case 'back-projects': gotoProjects(); break;
