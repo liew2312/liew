@@ -108,8 +108,6 @@ textarea.fld{ resize:none; line-height:1.45; }
 .chip.is-active{ background:var(--ap-red-600); color:#fff; border-color:var(--ap-red-600); font-weight:600; }
 .chip.chip-del{ border-color:var(--ap-red-600); border-style:dashed; color:var(--ap-red-600); background:#fff; font-weight:600; }
 .chip.chip-del.is-active{ background:#fff; color:var(--ap-red-600); }
-.chip.qn-chip{ font-size:12px; padding:6px 11px; color:var(--fg-2); border-style:dashed; font-weight:500; }
-.chip.qn-chip:active{ background:var(--ap-red-600); color:#fff; border-color:var(--ap-red-600); }
 .chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
 
 .sev-chip{ flex:1; text-align:center; font-size:13px; font-weight:600; padding:11px 4px; border-radius:12px; background:#fff; border:1.5px solid var(--border-default); color:var(--fg-2); }
@@ -279,31 +277,7 @@ var STATUS = {
 };
 var STATUS_ORDER = ['open','prog','done'];
 var ROOMS = ['ห้องนั่งเล่น','ครัว','ห้องนอนใหญ่','ห้องนอน 2','ห้องน้ำ','ระเบียง','โรงจอดรถ','ภายนอก'];
-var CAT_KEY='ap_cats_v1', ROOM_KEY='ap_rooms_v1', CAT_DEL_KEY='ap_cats_del_v1', ROOM_DEL_KEY='ap_rooms_del_v1', LAST_ROOM_KEY='ap_last_room_v1';
-function lastRoom(){ var r=''; try{ r=localStorage.getItem(LAST_ROOM_KEY)||''; }catch(e){} return (r&&ROOMS.indexOf(r)>=0)?r:(ROOMS[0]||''); }
-var QUICK_NOTES={
-  paint:['สีไม่เรียบ/เป็นคลื่น','สีหลุดล่อน','สีเปื้อน/เป็นคราบ','สีด่าง ไม่สม่ำเสมอ','ทาสีไม่ทั่ว เห็นพื้น'],
-  tile:['กระเบื้องแตก/บิ่น','ปูไม่ได้ระดับ','ยาแนวไม่เรียบ/ไม่เต็ม','กระเบื้องกลวง (เคาะมีเสียง)','ลายไม่ตรงแนว'],
-  elec:['เต้ารับไม่มีไฟ','สวิตช์ใช้งานไม่ได้','ดวงโคมไม่ติด','ฝาครอบหลวม/ไม่ตรง','สายไฟโผล่ ไม่เรียบร้อย'],
-  plumb:['น้ำรั่วซึม','น้ำไหลอ่อน','ท่อระบายน้ำอุดตัน','ก๊อกน้ำหลวม/หยด','สุขภัณฑ์ติดตั้งไม่แน่น'],
-  door:['ปิดไม่สนิท','เปิด-ปิดฝืด','ลูกบิด/มือจับหลวม','กระจกมีรอย/ร้าว','วงกบไม่ได้ฉาก ยาแนวไม่เรียบ'],
-  wood:['ผิวไม้ไม่เรียบ','รอยต่อไม่แนบ/มีร่อง','บวม/โก่งงอ','สีไม้ไม่สม่ำเสมอ','ตะปู/สกรูโผล่'],
-  ceil:['ฝ้ามีรอยร้าว','ผนังแตกลายงา','รอยต่อแผ่นเห็นชัด','ฝ้าเป็นคราบน้ำ/รั่วซึม','ผนังไม่ได้ดิ่ง/ไม่เรียบ'],
-  _default:['ชำรุด/เสียหาย','ติดตั้งไม่เรียบร้อย','ไม่ได้ระดับ/ไม่ได้ฉาก','มีรอยเปื้อน/คราบ']
-};
-function quickNoteChipsHtml(catId){
-  var list=(QUICK_NOTES[catId]||QUICK_NOTES._default||[]);
-  return list.map(function(t){ return '<span class="chip tapopt qn-chip" data-action="quick-note" data-note="'+attr(t)+'">+ '+esc(t)+'</span>'; }).join('');
-}
-function updateQuickNotes(catId){ var el=document.getElementById('quick-notes'); if(el) el.innerHTML=quickNoteChipsHtml(catId); }
-function appendQuickNote(txt){
-  var ta=document.getElementById('f-d-note'); if(!ta||!txt) return;
-  var cur=ta.value.trim(); if(cur==='(ไม่มีรายละเอียด)') cur='';
-  if(!cur){ ta.value=txt; }
-  else if(cur.indexOf(txt)>=0){ ta.focus(); return; }
-  else { ta.value=cur+' · '+txt; }
-  state.formNoteDraft=ta.value; ta.focus();
-}
+var CAT_KEY='ap_cats_v1', ROOM_KEY='ap_rooms_v1', CAT_DEL_KEY='ap_cats_del_v1', ROOM_DEL_KEY='ap_rooms_del_v1';
 function loadCustomLists(){
   try{ (JSON.parse(localStorage.getItem(CAT_KEY)||'[]')||[]).forEach(function(x){ if(x&&x.id&&x.name&&!CATS.some(function(k){return k.id===x.id;})) CATS.push(x); }); }catch(e){}
   try{ (JSON.parse(localStorage.getItem(ROOM_KEY)||'[]')||[]).forEach(function(x){ if(x&&ROOMS.indexOf(x)<0) ROOMS.push(x); }); }catch(e){}
@@ -992,7 +966,6 @@ function renderDefectOverlay(){
     '<div class="form-group"><div class="field-label">ระดับความรุนแรง</div><div style="display:flex;gap:8px;">'+sevChips+'</div></div>' +
     '<div class="form-group"><div class="field-label">สถานะการแก้ไข</div><div style="display:flex;gap:8px;">'+stChips+'</div></div>' +
     '<div class="form-group"><div class="field-label">รายละเอียด</div>' +
-      '<div id="quick-notes" class="chip-row" style="margin-bottom:8px;">'+quickNoteChipsHtml(curCat)+'</div>' +
       '<textarea class="fld" id="f-d-note" rows="3" placeholder="พิมพ์รายละเอียดที่พบ…">'+esc(note)+'</textarea></div>' +
     '<button type="button" class="btn-primary tapopt" data-action="submit-defect" style="margin-top:4px;">'+(isEdit?'บันทึกการแก้ไข':'บันทึก defect')+'</button></div>';
 }
@@ -1133,7 +1106,7 @@ function openSheetOverlay(mode,id){ state.overlay='sheet'; state.formMode=mode; 
 function openDefectOverlay(mode,id){
   state.overlay='defect'; state.formMode=mode; state.editId=id||null;
   state.manageCats=false; state.manageRooms=false;
-  state.formCat=(CATS[0]&&CATS[0].id)||''; state.formSev='minor'; state.formRoom=lastRoom(); state.formNoteDraft=''; state.formStatus='open';
+  state.formCat=(CATS[0]&&CATS[0].id)||''; state.formSev='minor'; state.formRoom=ROOMS[0]||''; state.formNoteDraft=''; state.formStatus='open';
   if (mode==='edit'){
     var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS),D=findDefect(S,id);
     pendingPhotos=[]; pendingPhotosAfter=[];
@@ -1417,7 +1390,6 @@ function submitDefectForm(){
   var sev=sevChip?sevChip.getAttribute('data-value'):'minor';
   var room=roomChip?roomChip.getAttribute('data-value'):ROOMS[0];
   var status=statusChip?statusChip.getAttribute('data-value'):'open';
-  if(room){ try{ localStorage.setItem(LAST_ROOM_KEY, room); }catch(e){} }
   var now=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
   function resolveSet(list){ return Promise.all(list.map(function(ph){ return ph.photoId?Promise.resolve(ph.photoId):Photos.put(ph.url).then(function(id){ photoUrlCache.set(id,ph.url); return id; }); })); }
   Promise.all([resolveSet(pendingPhotos), resolveSet(pendingPhotosAfter)])
@@ -1523,7 +1495,7 @@ function addBulkPhotos(fileList){
   var now=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
   Promise.all(files.map(downscalePhoto)).then(function(urls){
     var chain=Promise.resolve(), added=0;
-    urls.forEach(function(u){ if(!u) return; chain=chain.then(function(){ return Photos.put(u).then(function(id){ photoUrlCache.set(id,u); S.defects.push({ id:uid(), room:lastRoom(), cat:CATS[0].id, sev:'minor', status:'open', note:'(รอกรอกรายละเอียด)', photoIds:[id], photoIdsAfter:[], time:now, createdAt:Date.now() }); added++; }); }); });
+    urls.forEach(function(u){ if(!u) return; chain=chain.then(function(){ return Photos.put(u).then(function(id){ photoUrlCache.set(id,u); S.defects.push({ id:uid(), room:ROOMS[0], cat:CATS[0].id, sev:'minor', status:'open', note:'(รอกรอกรายละเอียด)', photoIds:[id], photoIdsAfter:[], time:now, createdAt:Date.now() }); added++; }); }); });
     chain.then(function(){ persist(); render(); if(added) window.alert('เพิ่ม '+added+' รายการจากรูปแล้ว — แตะแต่ละรายการเพื่อกรอกรายละเอียด'); });
   });
 }
@@ -1725,7 +1697,7 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'clear-signature': if(sigPad) sigPad.clear(); break;
     case 'remove-signature': removeSignature(el.getAttribute('data-role')); break;
     case 'close-overlay': closeOverlay(); break;
-    case 'pick-chip': { var g=el.getAttribute('data-group'), parent=el.parentElement; parent.querySelectorAll('[data-group="'+g+'"]').forEach(function(s){ s.classList.remove('is-active'); }); el.classList.add('is-active'); if(g==='cat') updateQuickNotes(el.getAttribute('data-value')); break; }
+    case 'pick-chip': { var g=el.getAttribute('data-group'), parent=el.parentElement; parent.querySelectorAll('[data-group="'+g+'"]').forEach(function(s){ s.classList.remove('is-active'); }); el.classList.add('is-active'); break; }
     case 'submit-project': submitProjectForm(); break;
     case 'delete-project': if(window.confirm('ลบโครงการนี้และข้อมูลทั้งหมด (แปลง ใบงาน defect รูป) ใช่หรือไม่?\n\nลบแล้วกู้คืนไม่ได้ — ควรสำรองข้อมูลก่อน')) removeProject(state.editId); break;
     case 'submit-unit': submitUnitForm(); break;
@@ -1740,7 +1712,6 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'remove-sheet': if(window.confirm('ลบใบงานตรวจนี้ทั้งหมดใช่หรือไม่? (ลบ defect และรูปทั้งหมดในใบงาน)')) removeSheet(el.getAttribute('data-id')); break;
     case 'add-cat': addCategory(); break;
     case 'add-room': addRoom(); break;
-    case 'quick-note': appendQuickNote(el.getAttribute('data-note')); break;
     case 'del-cat': removeCategory(el.getAttribute('data-value')); break;
     case 'del-room': removeRoom(el.getAttribute('data-value')); break;
     case 'toggle-manage-cats': captureDefectForm(); state.manageCats=!state.manageCats; render(); break;
