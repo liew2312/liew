@@ -262,7 +262,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v43 · 15 ก.ค. 2026';
+var APP_VERSION = 'v44 · 15 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -490,7 +490,7 @@ var CHANGE_KEY='ap_last_change';
 
 /* unsaved = มีการแก้ไขข้อมูลหลังการสำรองครั้งล่าสุด */
 function markChanged(){ try{ localStorage.setItem(CHANGE_KEY, String(Date.now())); }catch(e){} }
-function markBackedUp(){ try{ localStorage.setItem(BACKUP_KEY, String(Date.now())); }catch(e){} }
+function markBackedUp(ts){ try{ localStorage.setItem(BACKUP_KEY, String(ts||Date.now())); }catch(e){} }
 function hasUnsavedChanges(){
   if(!projects.length) return false;
   var c=0,b=0;
@@ -513,7 +513,7 @@ function findProject(pid){ return projects.find(function(p){ return p.id===pid; 
 function findUnit(p, uidv){ return p ? (p.units.find(function(u){ return u.id===uidv; }) || null) : null; }
 function findSheet(u, sid){ return u ? (u.sheets.find(function(s){ return s.id===sid; }) || null) : null; }
 function findDefect(s, did){ return s ? (s.defects.find(function(d){ return d.id===did; }) || null) : null; }
-function persist(){ Store.save(projects); markChanged(); }
+function persist(){ Store.save(projects); markChanged(); scheduleAutoSave(); }
 
 function modeMeta(mode){
   var m={
@@ -1721,6 +1721,52 @@ function saveWorksheet(){
     }).catch(pickNew);
   });
 }
+/* ---------- auto-save: เขียนไฟล์สำรองเองหลังข้อมูลเปลี่ยน (เมื่อได้รับสิทธิ์ไฟล์แล้ว) ---------- */
+var autoSaveTimer=null, autoSaveBusy=false;
+function autoSaveEligible(){
+  if(!window.showSaveFilePicker) return Promise.resolve(false);
+  return fsHandleGet().then(function(h){
+    if(!h) return false;
+    return (h.queryPermission?h.queryPermission({mode:'readwrite'}):Promise.resolve('prompt'))
+      .then(function(p){ return p==='granted'; }).catch(function(){ return false; });
+  });
+}
+function scheduleAutoSave(){
+  if(!window.showSaveFilePicker) return;
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer=setTimeout(runAutoSave, 4000);
+}
+function runAutoSave(){
+  if(autoSaveBusy || !hasUnsavedChanges()) return;
+  fsHandleGet().then(function(h){
+    if(!h) return;
+    (h.queryPermission?h.queryPermission({mode:'readwrite'}):Promise.resolve('prompt')).then(function(p){
+      if(p!=='granted') return; /* เขียนเงียบๆ ได้เฉพาะเมื่อมีสิทธิ์อยู่แล้ว */
+      autoSaveBusy=true;
+      var stamp=Date.now(); /* เวลาที่เริ่มเก็บ snapshot — การแก้ไขหลังจากนี้ยังถือว่าไม่ถูกบันทึก */
+      buildBackupBlob(function(blob){
+        h.createWritable().then(function(w){ return w.write(blob).then(function(){ return w.close(); }); })
+          .then(function(){
+            autoSaveBusy=false; markBackedUp(stamp);
+            showBackupToast('บันทึกใบงานอัตโนมัติ ✓');
+            refreshSaveDot();
+          })
+          .catch(function(){ autoSaveBusy=false; });
+      });
+    }).catch(function(){});
+  });
+}
+function refreshSaveDot(){
+  if(hasUnsavedChanges()) return;
+  document.querySelectorAll('[data-action="save-worksheet"] .backup-dot').forEach(function(el){ el.remove(); });
+}
+/* สลับแอพออก/พับหน้าจอ → รีบบันทึกทันที ไม่รอครบ 4 วินาที */
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='hidden' && hasUnsavedChanges()){
+    clearTimeout(autoSaveTimer); runAutoSave();
+  }
+});
+
 /* ---------- auto-restore: โหลดไฟล์สำรองกลับมาเองเมื่อข้อมูลในแอปหาย ---------- */
 var restoreOffer=false;
 function checkAutoRestore(){
@@ -1871,7 +1917,9 @@ function submitDefectForm(){
       if(state.formMode==='edit'){ var D=findDefect(S,state.editId); if(D){ D.cat=cat; D.sev=sev; D.room=room; D.status=status; D.note=note; D.photoIds=photoIds; D.photoIdsAfter=photoIdsAfter; if(status==='done'){ if(!D.doneAt) D.doneAt=Date.now(); } else { D.doneAt=null; } } state.scrollToDefect=state.editId; }
       else { var nid=uid(); S.defects.push({id:nid,room:room,cat:cat,sev:sev,status:status,note:note,photoIds:photoIds,photoIdsAfter:photoIdsAfter,time:now,createdAt:Date.now(),doneAt:(status==='done'?Date.now():null)}); state.scrollToDefect=nid; }
       persist(); state.overlay=null; pendingPhotos=[]; pendingPhotosAfter=[]; render();
-      showBackupToast('บันทึกรายการแล้ว · แตะ “บันทึกใบงาน” เพื่อเก็บลงเครื่อง');
+      autoSaveEligible().then(function(ok){
+        showBackupToast(ok ? 'บันทึกรายการแล้ว ✓' : 'บันทึกรายการแล้ว · แตะ “บันทึกใบงาน” เพื่อเก็บลงเครื่อง');
+      });
     });
 }
 function submitSignature(){
