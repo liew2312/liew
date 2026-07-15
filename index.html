@@ -57,7 +57,9 @@ img{ max-width:100%; display:block; }
 }
 @media (min-width:521px){ .app-shell{ box-shadow:0 0 0 1px var(--ap-neutral-300); } }
 
-.screen{ height:100%; display:flex; flex-direction:column; }
+.screen{ height:100%; display:flex; flex-direction:column; position:relative; }
+.fab{ position:absolute; right:16px; bottom:calc(94px + var(--safe-b)); width:58px; height:58px; border-radius:50%; background:var(--ap-red-600); color:#fff; border:none; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(146,28,30,.4); z-index:50; }
+.fab:active{ transform:scale(.95); }
 .scroll{ flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; background:var(--ap-neutral-100); }
 .scroll::-webkit-scrollbar{ width:0; }
 
@@ -260,7 +262,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v42 · 15 ก.ค. 2026';
+var APP_VERSION = 'v43 · 15 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -842,7 +844,7 @@ function renderProjectsScreen(){
         agingBellHtml() +
         iconBtn('open-settings','',IC_GEAR) + '</div>' +
       '<h1>โครงการของฉัน</h1></div>' +
-    '<div class="scroll" style="padding:16px;">'+backupReminderHtml()+heading+body+'</div>' +
+    '<div class="scroll" style="padding:16px;">'+restoreBannerHtml()+backupReminderHtml()+heading+body+'</div>' +
     '<div class="bottom-bar"><button type="button" class="btn-primary tapopt" data-action="open-overlay-project" data-mode="add">' +
       '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>เพิ่มโครงการ</button></div>' +
   '</div>';
@@ -1139,9 +1141,10 @@ function renderSheetScreen(){
       agingBannerHtml(S) + summary + listLink + signHtml +
     '</div>' +
     '<div class="bottom-bar">' +
-      backupBtnHtml() +
-      '<button type="button" class="btn-primary tapopt" data-action="open-overlay-defect" data-mode="add" style="flex:1;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>บันทึก defect</button>' +
-    '</div></div>';
+      saveWorksheetBtnHtml() +
+    '</div>' +
+    fabHtml() +
+    '</div>';
 }
 
 /* ---------- screen: defect list (saved records, own page) ---------- */
@@ -1184,10 +1187,11 @@ function renderDefectListScreen(){
       '<div id="deflist-empty" class="empty-state" style="display:none;">ไม่พบรายการที่ค้นหา</div>' +
     '</div>' +
     '<div class="bottom-bar">' +
-      backupBtnHtml() +
       '<button type="button" class="btn-outline-round tapopt" data-action="bulk-add-photos" title="เพิ่มหลายรูป (1 รูป = 1 รายการ)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="4" width="12" height="12" rx="2"></rect><path d="M4 8v10a2 2 0 0 0 2 2h10"></path><path d="m11.5 10.5 1.8 1.8 2.7-2.7"></path></svg></button>' +
-      '<button type="button" class="btn-primary tapopt" data-action="open-overlay-defect" data-mode="add" style="flex:1;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">'+IC_PLUS+'</svg>บันทึก defect</button>' +
-    '</div></div>';
+      saveWorksheetBtnHtml() +
+    '</div>' +
+    fabHtml() +
+    '</div>';
 }
 
 /* ---------- overlay: project ---------- */
@@ -1650,10 +1654,110 @@ function showBackupToast(msg){
   clearTimeout(showBackupToast._tm);
   showBackupToast._tm=setTimeout(function(){ t.classList.remove('show'); }, 2400);
 }
-function backupBtnHtml(){
-  var dot = hasUnsavedChanges() ? '<span class="backup-dot"></span>' : '';
-  return '<button type="button" class="btn-outline-round tapopt" data-action="export-backup" title="สำรองข้อมูลลงเครื่อง" style="position:relative;overflow:visible;">' +
-    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3v12"></path><path d="m8 11 4 4 4-4"></path><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg>' + dot + '</button>';
+function saveWorksheetBtnHtml(){
+  var dot = hasUnsavedChanges() ? '<span class="backup-dot" style="top:8px;right:12px;background:#FFC53D;border-color:#fff;"></span>' : '';
+  return '<button type="button" class="btn-primary tapopt" data-action="save-worksheet" style="flex:1;position:relative;overflow:visible;">' +
+    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg>' +
+    'บันทึกใบงาน' + dot + '</button>';
+}
+function fabHtml(){
+  return '<button type="button" class="fab tapopt" data-action="open-overlay-defect" data-mode="add" title="เพิ่ม defect"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">'+IC_PLUS+'</svg></button>';
+}
+
+/* ---------- save worksheet: เขียนไฟล์สำรองลงไฟล์เดิมในเครื่อง (File System Access API) ---------- */
+function fsHandleDb(){
+  return new Promise(function(resolve){
+    if(!('indexedDB' in window)){ resolve(null); return; }
+    try{
+      var req=indexedDB.open('ap_inspect_fs',1);
+      req.onupgradeneeded=function(){ try{ req.result.createObjectStore('h'); }catch(e){} };
+      req.onsuccess=function(){ resolve(req.result); };
+      req.onerror=function(){ resolve(null); };
+    }catch(e){ resolve(null); }
+  });
+}
+function fsHandleGet(){
+  return fsHandleDb().then(function(db){
+    if(!db) return null;
+    return new Promise(function(resolve){
+      try{ var g=db.transaction('h').objectStore('h').get('backup');
+        g.onsuccess=function(){ resolve(g.result||null); }; g.onerror=function(){ resolve(null); };
+      }catch(e){ resolve(null); }
+    });
+  });
+}
+function fsHandleSet(h){
+  return fsHandleDb().then(function(db){
+    if(!db) return null;
+    return new Promise(function(resolve){
+      try{ var tx=db.transaction('h','readwrite'); tx.objectStore('h').put(h,'backup');
+        tx.oncomplete=function(){ resolve(true); }; tx.onerror=function(){ resolve(null); };
+      }catch(e){ resolve(null); }
+    });
+  });
+}
+function saveWorksheet(){
+  if(!window.showSaveFilePicker){ exportBackup(); return; } /* iOS/Safari: ดาวน์โหลดไฟล์แทน */
+  fsHandleGet().then(function(h){
+    function writeTo(handle){
+      buildBackupBlob(function(blob){
+        handle.createWritable().then(function(w){ return w.write(blob).then(function(){ return w.close(); }); })
+          .then(function(){ markBackedUp(); showBackupToast('บันทึกใบงานลงเครื่องแล้ว ✓'); render(); })
+          .catch(function(){ exportBackup(); });
+      });
+    }
+    function pickNew(){
+      window.showSaveFilePicker({ suggestedName:'ap-inspect-backup.json',
+        types:[{description:'AP Inspect Backup', accept:{'application/json':['.json']}}] })
+        .then(function(handle){ fsHandleSet(handle); writeTo(handle); })
+        .catch(function(){ /* ผู้ใช้ยกเลิก */ });
+    }
+    if(!h){ pickNew(); return; }
+    (h.queryPermission?h.queryPermission({mode:'readwrite'}):Promise.resolve('prompt')).then(function(p){
+      if(p==='granted'){ writeTo(h); return; }
+      (h.requestPermission?h.requestPermission({mode:'readwrite'}):Promise.resolve('denied')).then(function(p2){
+        if(p2==='granted') writeTo(h); else pickNew();
+      }).catch(pickNew);
+    }).catch(pickNew);
+  });
+}
+/* ---------- auto-restore: โหลดไฟล์สำรองกลับมาเองเมื่อข้อมูลในแอปหาย ---------- */
+var restoreOffer=false;
+function checkAutoRestore(){
+  if(projects.length || !window.showSaveFilePicker) return;
+  fsHandleGet().then(function(h){
+    if(!h) return;
+    (h.queryPermission?h.queryPermission({mode:'read'}):Promise.resolve('prompt')).then(function(p){
+      if(p==='granted'){
+        h.getFile().then(function(f){ return f.text(); }).then(function(txt){
+          var data; try{ data=JSON.parse(txt); }catch(e){ return; }
+          if(!data||data.app!=='ap-inspect'||!Array.isArray(data.projects)||!data.projects.length) return;
+          restoreFromData(data, 'พบไฟล์สำรองในเครื่อง ('+data.projects.length+' โครงการ) กู้คืนข้อมูลอัตโนมัติเลยหรือไม่?');
+        }).catch(function(){});
+      } else { restoreOffer=true; render(); }
+    }).catch(function(){});
+  });
+}
+function restoreFromHandle(){
+  fsHandleGet().then(function(h){
+    if(!h){ window.alert('ไม่พบไฟล์สำรองที่เคยบันทึกไว้'); return; }
+    (h.requestPermission?h.requestPermission({mode:'read'}):Promise.resolve('denied')).then(function(p){
+      if(p!=='granted'){ window.alert('ไม่ได้รับสิทธิ์อ่านไฟล์ — เลือกไฟล์สำรองเองได้ที่ ตั้งค่า > กู้คืนข้อมูล'); return; }
+      h.getFile().then(function(f){ return f.text(); }).then(function(txt){
+        var data; try{ data=JSON.parse(txt); }catch(e){ window.alert('ไฟล์สำรองไม่ถูกต้อง'); return; }
+        restoreOffer=false;
+        restoreFromData(data, 'กู้คืนข้อมูลจากไฟล์สำรองในเครื่อง? ข้อมูลปัจจุบันจะถูกแทนที่');
+      }).catch(function(){ window.alert('อ่านไฟล์สำรองไม่สำเร็จ'); });
+    }).catch(function(){});
+  });
+}
+function restoreBannerHtml(){
+  if(!restoreOffer || projects.length) return '';
+  return '<div class="reminder">' +
+    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9B6612" stroke-width="1.9" style="flex-shrink:0;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>' +
+    '<div style="flex:1;min-width:0;"><b style="font-size:13.5px;">พบไฟล์สำรองในเครื่อง</b><div style="font-size:12px;color:var(--fg-2);">แตะกู้คืนเพื่อโหลดข้อมูลเดิมกลับมา</div></div>' +
+    '<button type="button" class="reminder-btn tapopt" data-action="restore-backup-file">กู้คืน</button>' +
+  '</div>';
 }
 window.addEventListener('beforeunload', function(e){
   if(hasUnsavedChanges()){
@@ -1686,26 +1790,30 @@ function bulkDoneVisible(){
   if(!window.confirm('ทำเครื่องหมาย “แก้แล้ว” ให้ '+targets.length+' รายการที่แสดงอยู่?')) return;
   targets.forEach(function(d){ d.status='done'; if(!d.doneAt) d.doneAt=Date.now(); }); persist(); render();
 }
+function restoreFromData(data, confirmMsg){
+  if(!data || data.app!=='ap-inspect' || !Array.isArray(data.projects)){ window.alert('ไฟล์นี้ไม่ใช่ไฟล์สำรองของแอปนี้'); return; }
+  if(confirmMsg && !window.confirm(confirmMsg)) return;
+  var photos=data.photos||{}, pids=Object.keys(photos);
+  Promise.all(pids.map(function(id){ return Photos.putId(id, photos[id]); })).then(function(){
+    projects = data.projects; Store.save(projects);
+    try{ if(Array.isArray(data.cats)) localStorage.setItem(CAT_KEY, JSON.stringify(data.cats)); }catch(e){}
+    try{ if(Array.isArray(data.rooms)) localStorage.setItem(ROOM_KEY, JSON.stringify(data.rooms)); }catch(e){}
+    try{ localStorage.setItem(CAT_DEL_KEY, JSON.stringify(Array.isArray(data.catsDel)?data.catsDel:[])); }catch(e){}
+    try{ localStorage.setItem(ROOM_DEL_KEY, JSON.stringify(Array.isArray(data.roomsDel)?data.roomsDel:[])); }catch(e){}
+    if(photoUrlCache && photoUrlCache.clear) photoUrlCache.clear();
+    loadCustomLists();
+    markBackedUp(); /* ข้อมูลตรงกับไฟล์สำรองแล้ว ไม่ต้องเตือน */
+    Object.assign(state,{overlay:null,screen:'projects',curP:null,curU:null,curS:null});
+    render();
+    window.alert('กู้คืนข้อมูลสำเร็จ · '+projects.length+' โครงการ');
+  });
+}
 function importBackupFile(file){
   if(!file) return;
   var reader=new FileReader();
   reader.onload=function(){
     var data; try{ data=JSON.parse(reader.result); }catch(e){ window.alert('ไฟล์สำรองไม่ถูกต้อง (อ่านไม่ได้)'); return; }
-    if(!data || data.app!=='ap-inspect' || !Array.isArray(data.projects)){ window.alert('ไฟล์นี้ไม่ใช่ไฟล์สำรองของแอปนี้'); return; }
-    if(!window.confirm('กู้คืนข้อมูลจากไฟล์นี้? ข้อมูลปัจจุบันทั้งหมดในเครื่องจะถูกแทนที่')) return;
-    var photos=data.photos||{}, pids=Object.keys(photos);
-    Promise.all(pids.map(function(id){ return Photos.putId(id, photos[id]); })).then(function(){
-      projects = data.projects; Store.save(projects);
-      try{ if(Array.isArray(data.cats)) localStorage.setItem(CAT_KEY, JSON.stringify(data.cats)); }catch(e){}
-      try{ if(Array.isArray(data.rooms)) localStorage.setItem(ROOM_KEY, JSON.stringify(data.rooms)); }catch(e){}
-      try{ localStorage.setItem(CAT_DEL_KEY, JSON.stringify(Array.isArray(data.catsDel)?data.catsDel:[])); }catch(e){}
-      try{ localStorage.setItem(ROOM_DEL_KEY, JSON.stringify(Array.isArray(data.roomsDel)?data.roomsDel:[])); }catch(e){}
-      if(photoUrlCache && photoUrlCache.clear) photoUrlCache.clear();
-      loadCustomLists();
-      Object.assign(state,{overlay:null,screen:'projects',curP:null,curU:null,curS:null});
-      render();
-      window.alert('กู้คืนข้อมูลสำเร็จ · '+projects.length+' โครงการ');
-    });
+    restoreFromData(data, 'กู้คืนข้อมูลจากไฟล์นี้? ข้อมูลปัจจุบันทั้งหมดในเครื่องจะถูกแทนที่');
   };
   reader.readAsText(file);
 }
@@ -1763,7 +1871,7 @@ function submitDefectForm(){
       if(state.formMode==='edit'){ var D=findDefect(S,state.editId); if(D){ D.cat=cat; D.sev=sev; D.room=room; D.status=status; D.note=note; D.photoIds=photoIds; D.photoIdsAfter=photoIdsAfter; if(status==='done'){ if(!D.doneAt) D.doneAt=Date.now(); } else { D.doneAt=null; } } state.scrollToDefect=state.editId; }
       else { var nid=uid(); S.defects.push({id:nid,room:room,cat:cat,sev:sev,status:status,note:note,photoIds:photoIds,photoIdsAfter:photoIdsAfter,time:now,createdAt:Date.now(),doneAt:(status==='done'?Date.now():null)}); state.scrollToDefect=nid; }
       persist(); state.overlay=null; pendingPhotos=[]; pendingPhotosAfter=[]; render();
-      showBackupToast('บันทึกรายการแล้ว · แตะปุ่มสำรอง ⬇ เพื่อเก็บไฟล์ลงเครื่อง');
+      showBackupToast('บันทึกรายการแล้ว · แตะ “บันทึกใบงาน” เพื่อเก็บลงเครื่อง');
     });
 }
 function submitSignature(){
@@ -2064,6 +2172,8 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'download-manual': downloadManual(); break;
     case 'export-backup': exportBackup(); break;
     case 'share-backup': shareBackup(); break;
+    case 'save-worksheet': saveWorksheet(); break;
+    case 'restore-backup-file': restoreFromHandle(); break;
     case 'share-app': shareAppLink(); break;
     case 'dismiss-backup': try{ sessionStorage.setItem('ap_backup_dismiss','1'); }catch(e){} render(); break;
     case 'import-backup': document.getElementById('backup-input').click(); break;
@@ -2154,7 +2264,7 @@ document.addEventListener('click', function(e){
 });
 
 /* ---------- boot ---------- */
-migrate().then(function(loaded){ projects = loaded || []; loadCustomLists(); render(); registerPWA(); setupInstall(); });
+migrate().then(function(loaded){ projects = loaded || []; loadCustomLists(); render(); checkAutoRestore(); registerPWA(); setupInstall(); });
 </script>
 </body>
 </html>
