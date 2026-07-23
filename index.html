@@ -262,7 +262,7 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v44 · 15 ก.ค. 2026';
+var APP_VERSION = 'v45 · 23 ก.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
@@ -1616,7 +1616,7 @@ function collectPhotoIds(){
 function readList(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]')||[]; }catch(e){ return []; } }
 function buildBackupBlob(then){
   var ids=collectPhotoIds();
-  Promise.all(ids.map(function(id){ return Photos.get(id).then(function(u){ return [id,u]; }); })).then(function(entries){
+  Promise.all(ids.map(function(id){ return Photos.get(id).then(function(u){ return [id,u]; }).catch(function(){ return [id,null]; }); })).then(function(entries){
     var photos={}; entries.forEach(function(e){ if(e[1]) photos[e[0]]=e[1]; });
     var data={ app:'ap-inspect', schema:'v4', version:APP_VERSION, exportedAt:new Date().toISOString(),
       projects:projects, photos:photos, cats:readList(CAT_KEY), rooms:readList(ROOM_KEY), catsDel:readList(CAT_DEL_KEY), roomsDel:readList(ROOM_DEL_KEY) };
@@ -1637,13 +1637,34 @@ function exportBackup(){
 }
 function shareBackup(){
   buildBackupBlob(function(blob){
-    var file=new File([blob], backupFileName(), {type:'application/json'});
+    var name=backupFileName();
+    var file=new File([blob], name, {type:'application/json'});
     markBackedUp(); render();
+    /* ดาวน์โหลดลงเครื่องเป็นทางสำรอง — ใช้ได้แม้ระบบแชร์ตรงไม่ทำงาน */
+    var downloadFallback=function(msg){
+      var url=URL.createObjectURL(blob), a=document.createElement('a');
+      a.href=url; a.download=name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); },1500);
+      showBackupToast(msg||'บันทึกไฟล์สำรองลงเครื่องแล้ว — เปิดแอปไฟล์/LINE เพื่อแชร์ต่อได้');
+    };
     if(navigator.canShare && navigator.canShare({files:[file]})){
-      navigator.share({files:[file], title:'ไฟล์สำรองตรวจบ้าน AP', text:'ไฟล์สำรองข้อมูลแอปตรวจบ้าน AP'}).catch(function(){});
+      var shareOK=false;
+      try{
+        var p=navigator.share({files:[file], title:'ไฟล์สำรองตรวจบ้าน AP', text:'ไฟล์สำรองข้อมูลแอปตรวจบ้าน AP'});
+        if(p && p.then){
+          shareOK=true;
+          p.then(function(){ showBackupToast('แชร์ไฟล์สำรองแล้ว ✓'); })
+           .catch(function(err){
+             /* ผู้ใช้กดยกเลิกเอง = ไม่ถือว่าผิดพลาด */
+             if(err && (err.name==='AbortError'||err.name==='CanceledError')) return;
+             /* แชร์ไม่สำเร็จ (เช่น หมดสิทธิ์ user gesture) → ดาวน์โหลดแทน */
+             downloadFallback();
+           });
+        }
+      }catch(e){ shareOK=false; }
+      if(!shareOK){ downloadFallback('อุปกรณ์นี้แชร์ไฟล์ตรงไม่ได้ — ดาวน์โหลดไฟล์ไว้แล้ว'); }
     } else {
-      var url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=backupFileName(); document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); },1500);
-      window.alert('อุปกรณ์นี้แชร์ไฟล์ตรงไม่ได้ — ดาวน์โหลดไฟล์ไว้แล้ว เปิดแอปไฟล์/LINE เพื่อแชร์ต่อได้');
+      downloadFallback('อุปกรณ์นี้แชร์ไฟล์ตรงไม่ได้ — ดาวน์โหลดไฟล์ไว้แล้ว เปิดแอปไฟล์/LINE เพื่อแชร์ต่อได้');
     }
   });
 }
