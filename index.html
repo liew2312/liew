@@ -113,6 +113,8 @@ textarea.fld{ resize:none; line-height:1.45; }
 .chip.qn-chip{ font-size:12px; padding:6px 11px; color:var(--fg-2); border-style:dashed; font-weight:500; }
 .chip.qn-chip:active{ background:var(--ap-red-600); color:#fff; border-color:var(--ap-red-600); }
 .chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.step-label{ font-size:12px; font-weight:600; color:var(--fg-2); margin-bottom:7px; }
+.chip.item-chip.is-active{ background:var(--ap-red-50); color:var(--ap-red-600); border-color:var(--ap-red-600); border-style:solid; }
 
 .sev-chip{ flex:1; text-align:center; font-size:13px; font-weight:600; padding:11px 4px; border-radius:12px; background:#fff; border:1.5px solid var(--border-default); color:var(--fg-2); }
 .sev-chip.is-active[data-value="major"]{ background:var(--ap-red-50); color:var(--ap-red-600); border-color:var(--ap-red-600); }
@@ -262,11 +264,12 @@ var LS_KEY  = 'ap_inspect_v4';
 var V3_KEY  = 'ap_inspect_v3';
 var V2_KEY  = 'ap_se_inspect_v2';
 var MAX_PHOTOS_PER_DEFECT = 6;
-var APP_VERSION = 'v45 · 23 ก.ค. 2026';
+var APP_VERSION = 'v46 · 12 ต.ค. 2026';
 
 var CATS = [
   { id:'paint', name:'สี' }, { id:'tile', name:'กระเบื้อง' }, { id:'elec', name:'ไฟฟ้า' },
   { id:'plumb', name:'ประปา' }, { id:'door', name:'ประตู-หน้าต่าง' }, { id:'wood', name:'งานไม้' }, { id:'ceil', name:'ฝ้า/ผนัง' },
+  { id:'ext', name:'งานภายนอก/รั้ว' }, { id:'roof', name:'หลังคา/รางน้ำ' }, { id:'land', name:'ภูมิทัศน์/สวน' },
 ];
 var SEV = {
   major:{ name:'Major', color:'#921C1E' },
@@ -294,6 +297,9 @@ var QUICK_NOTES={
   door:['ปิดไม่สนิท','เปิด-ปิดฝืด','ลูกบิด/มือจับหลวม','กระจกมีรอย/ร้าว','วงกบไม่ได้ฉาก ยาแนวไม่เรียบ'],
   wood:['ผิวไม้ไม่เรียบ','รอยต่อไม่แนบ/มีร่อง','บวม/โก่งงอ','สีไม้ไม่สม่ำเสมอ','ตะปู/สกรูโผล่'],
   ceil:['ฝ้ามีรอยร้าว','ผนังแตกลายงา','รอยต่อแผ่นเห็นชัด','ฝ้าเป็นคราบน้ำ/รั่วซึม','ผนังไม่ได้ดิ่ง/ไม่เรียบ'],
+  ext:['พื้นร้าว','น้ำขัง/ไม่ได้ระดับ','สนิม/สีลอก','รั้ว/ราวโยก หลวม'],
+  roof:['หลังคารั่วซึม','กระเบื้องหลังคาแตก/เลื่อน','รางน้ำรั่ว/ล้น','ครอบสันไม่เรียบร้อย'],
+  land:['หญ้าตาย/เหลืองเป็นหย่อม','ดินยุบ/ไม่ได้ระดับ','ต้นไม้ตาย/ไม่สมบูรณ์','มีเศษวัสดุก่อสร้าง'],
   _default:['ชำรุด/เสียหาย','ติดตั้งไม่เรียบร้อย','ไม่ได้ระดับ/ไม่ได้ฉาก','มีรอยเปื้อน/คราบ']
 };
 function quickNoteChipsHtml(catId){
@@ -301,19 +307,146 @@ function quickNoteChipsHtml(catId){
   return list.map(function(t){ return '<span class="chip tapopt qn-chip" data-action="quick-note" data-note="'+attr(t)+'">+ '+esc(t)+'</span>'; }).join('');
 }
 function updateQuickNotes(catId){ var el=document.getElementById('quick-notes'); if(el) el.innerHTML=quickNoteChipsHtml(catId); }
-function appendQuickNote(txt){
+function appendQuickNote(txt, noFocus){
   var ta=document.getElementById('f-d-note'); if(!ta||!txt) return;
   var cur=ta.value.trim(); if(cur==='(ไม่มีรายละเอียด)') cur='';
   if(!cur){ ta.value=txt; }
-  else if(cur.indexOf(txt)>=0){ ta.focus(); return; }
+  else if(cur.indexOf(txt)>=0){ if(!noFocus) ta.focus(); return; }
   else { ta.value=cur+' · '+txt; }
-  state.formNoteDraft=ta.value; ta.focus();
+  state.formNoteDraft=ta.value; if(!noFocus) ta.focus();
 }
+/* ---------- ตำแหน่งแบบขั้นตอน: ห้อง › บริเวณ › รายการ defect ---------- */
+var AREA_KEY='ap_areas_v1';
+function _A(name, items){ return { name:name, items:items.map(function(x){ return { t:x[0], c:x[1] }; }) }; }
+function _aWall(){ return _A('ผนัง',[['สีไม่เรียบ/เป็นคลื่น','paint'],['สีด่าง/มีคราบเปื้อน','paint'],['ผนังร้าว/แตกลายงา','ceil'],['ผนังไม่ได้ดิ่ง/ไม่เรียบ','ceil'],['บัวเชิงผนังไม่แนบ/หลุด','wood']]); }
+function _aFloor(){ return _A('พื้น',[['กระเบื้องแตก/บิ่น','tile'],['กระเบื้องกลวง (เคาะมีเสียง)','tile'],['ยาแนวไม่เต็ม/ไม่เรียบ','tile'],['ปูไม่ได้ระดับ/ลายไม่ตรงแนว','tile'],['พื้นไม้/ลามิเนตบวม มีร่อง','wood']]); }
+function _aCeil(){ return _A('ฝ้าเพดาน',[['ฝ้าร้าว','ceil'],['รอยต่อแผ่นเห็นชัด','ceil'],['คราบน้ำ/รั่วซึม','ceil'],['ฝ้าไม่ได้ระดับ/ตกท้องช้าง','ceil'],['ช่องเซอร์วิสปิดไม่สนิท','ceil']]); }
+function _aDoor(){ return _A('ประตู',[['ปิดไม่สนิท','door'],['เปิด-ปิดฝืด/ครูดพื้น','door'],['ลูกบิด/มือจับหลวม','door'],['บานพับหลวม/มีเสียง','door'],['วงกบยาแนวไม่เรียบ','door']]); }
+function _aWin(){ return _A('หน้าต่าง',[['ปิดไม่สนิท/ลมเข้า','door'],['กระจกมีรอย/ร้าว','door'],['มุ้งลวดขาด/หลุด','door'],['ซิลิโคนไม่เต็ม/น้ำซึม','door'],['กลอนล็อกไม่ได้','door']]); }
+function _aElec(){ return _A('ไฟฟ้า',[['เต้ารับไม่มีไฟ','elec'],['สวิตช์ใช้งานไม่ได้','elec'],['ดวงโคมไม่ติด','elec'],['ฝาครอบหลวม/ไม่ตรง','elec'],['สายไฟโผล่ ไม่เรียบร้อย','elec']]); }
+function tplInterior(){ return [_aWall(),_aFloor(),_aCeil(),_aDoor(),_aWin(),_aElec()]; }
+function tplKitchen(){ return [_aWall(),_aFloor(),_aCeil(),
+  _A('เคาน์เตอร์/ซิงค์',[['ซิงค์/ท่อใต้ซิงค์รั่ว','plumb'],['ก๊อกหลวม/หยด','plumb'],['ท่อระบายซิงค์ตัน/ระบายช้า','plumb'],['ซิลิโคนขอบเคาน์เตอร์ไม่เรียบ','plumb'],['ท็อปเคาน์เตอร์มีรอย/บิ่น','wood']]),
+  _A('ตู้ครัว',[['บานตู้ไม่ได้แนว/ปิดไม่สนิท','wood'],['ผิวตู้บวม/ลอก','wood'],['มือจับ/บานพับหลวม','wood'],['ลิ้นชักฝืด','wood']]),
+  _aDoor(),_aWin(),_aElec()]; }
+function tplBath(){ return [
+  _A('พื้น/ผนังกระเบื้อง',[['กระเบื้องแตก/บิ่น','tile'],['ยาแนวไม่เต็ม/ไม่เรียบ','tile'],['พื้นไม่ลาดเข้าท่อ/น้ำขัง','tile'],['กระเบื้องกลวง (เคาะมีเสียง)','tile'],['ลายไม่ตรงแนว','tile']]),
+  _A('สุขภัณฑ์',[['ชักโครกโยก/ติดตั้งไม่แน่น','plumb'],['ชักโครกน้ำไหลไม่หยุด','plumb'],['กดชักโครกไม่ลง/ไหลอ่อน','plumb'],['ซิลิโคนรอบฐานไม่เรียบ','plumb']]),
+  _A('อ่าง/ก๊อก/ฝักบัว',[['ก๊อกหยด/หลวม','plumb'],['น้ำไหลอ่อน','plumb'],['ท่อใต้อ่างรั่ว','plumb'],['ฝักบัว/ราวแขวนหลวม','plumb'],['อ่างล้างหน้าโยก','plumb']]),
+  _A('ท่อระบาย/ฟลอร์เดรน',[['ระบายช้า/ตัน','plumb'],['มีกลิ่นย้อน','plumb'],['ฝาตะแกรงไม่เรียบ/ไม่ได้ระดับ','plumb']]),
+  _aCeil(),
+  _A('ประตูห้องน้ำ',[['บานบวม/ปิดไม่สนิท','door'],['ลูกบิดหลวม/ล็อกไม่ได้','door'],['ขอบล่างบานชำรุด','door']]),
+  _A('ไฟฟ้า/พัดลมดูดอากาศ',[['พัดลมดูดอากาศไม่ทำงาน/เสียงดัง','elec'],['ดวงโคมไม่ติด','elec'],['เครื่องทำน้ำอุ่นไม่ทำงาน','elec'],['ฝาครอบหลวม/ไม่ตรง','elec']])
+]; }
+function defaultAreaTree(){ return {
+  'ห้องนั่งเล่น':tplInterior(), 'ห้องนอนใหญ่':tplInterior(), 'ห้องนอน 2':tplInterior(),
+  'ครัว':tplKitchen(), 'ห้องน้ำ':tplBath(),
+  'ระเบียง':[
+    _A('พื้นระเบียง',[['น้ำขัง/ไม่ลาดเอียง','tile'],['กระเบื้องแตก/บิ่น','tile'],['ยาแนวไม่เต็ม','tile']]),
+    _A('ราวกันตก',[['ราวโยก/หลวม','ext'],['สนิม/สีลอก','ext'],['รอยเชื่อมไม่เรียบร้อย','ext']]),
+    _A('ประตูระเบียง',[['ปิดไม่สนิท/น้ำซึม','door'],['เลื่อนฝืด','door'],['กลอนล็อกไม่ได้','door']]),
+    _A('ท่อระบายน้ำ',[['ท่อระบายตัน','plumb'],['ไม่มีตะแกรงกันเศษ','plumb']]),
+    _aCeil(), _aElec()
+  ],
+  'โรงจอดรถ':[
+    _A('พื้นลานจอด',[['พื้นร้าว','ext'],['พื้นไม่ได้ระดับ/น้ำขัง','ext'],['ผิวพื้นหลุดร่อน','ext'],['กระเบื้อง/บล็อกปูพื้นแตก','tile']]),
+    _A('หลังคาโรงจอด',[['หลังคารั่วซึม','roof'],['รางน้ำรั่ว/ล้น','roof'],['โครงเหล็กสนิม/สีลอก','roof']]),
+    _A('ประตูรั้ว',[['เลื่อนฝืด/ตกราง','ext'],['ล็อกไม่ได้','ext'],['สนิม/สีลอก','ext']]),
+    _aElec()
+  ],
+  'ภายนอก':[
+    _A('สนามหญ้า',[['หญ้าตาย/เหลืองเป็นหย่อม','land'],['ปูหญ้าไม่เต็ม/เห็นรอยต่อ','land'],['ดินยุบ/ไม่ได้ระดับ','land'],['น้ำขังในสนาม','land'],['มีเศษวัสดุก่อสร้างในดิน','land']]),
+    _A('ต้นไม้/แปลงปลูก',[['ต้นไม้ตาย/ไม่สมบูรณ์','land'],['จำนวน/ชนิดไม่ตรงแบบ','land'],['ขอบแปลงชำรุด','land']]),
+    _A('รั้ว/กำแพง',[['รั้วร้าว','ext'],['สีรั้วลอก/ด่าง','paint'],['รั้วเอียง/ไม่ได้ดิ่ง','ext'],['เหล็กรั้วเป็นสนิม','ext']]),
+    _A('ผนังภายนอก',[['สีลอก/ด่าง','paint'],['ผนังร้าว','ceil'],['คราบน้ำ/ตะไคร่','paint'],['ซิลิโคนรอบวงกบไม่เต็ม','door']]),
+    _A('หลังคา/รางน้ำ',[['กระเบื้องหลังคาแตก/เลื่อน','roof'],['รางน้ำรั่ว/ล้น','roof'],['ครอบสันไม่เรียบร้อย','roof'],['ไม้เชิงชาย/ชายคาชำรุด','roof']]),
+    _A('ทางเดิน/ลานซักล้าง',[['พื้นร้าว','ext'],['น้ำขัง','ext'],['กระเบื้องแตก','tile']]),
+    _A('บ่อพัก/ท่อระบายน้ำ',[['ฝาบ่อพักแตก/ไม่ได้ระดับ','plumb'],['ท่อระบายตัน','plumb'],['มีเศษวัสดุในบ่อพัก','plumb']]),
+    _A('ปั๊มน้ำ/ถังน้ำ/มิเตอร์',[['ปั๊มน้ำไม่ทำงาน/เสียงดัง','plumb'],['ท่อรั่วที่ถังน้ำ','plumb'],['มิเตอร์ไฟ/น้ำไม่เรียบร้อย','elec']])
+  ]
+}; }
+var AREA_TREE=null;
+function loadAreaTree(){ var t=null; try{ t=JSON.parse(localStorage.getItem(AREA_KEY)||'null'); }catch(e){} AREA_TREE=(t&&typeof t==='object'&&!Array.isArray(t))?t:defaultAreaTree(); }
+function saveAreaTree(){ try{ localStorage.setItem(AREA_KEY, JSON.stringify(AREA_TREE)); }catch(e){} }
+function fallbackAreas(room){ room=String(room||''); if(room.indexOf('ห้องน้ำ')>=0) return tplBath(); if(room.indexOf('ครัว')>=0) return tplKitchen(); if(room.indexOf('ห้อง')>=0) return tplInterior(); return []; }
+function areasFor(room){ if(!AREA_TREE) loadAreaTree(); return AREA_TREE[room] || fallbackAreas(room); }
+function ensureAreas(room){ if(!AREA_TREE) loadAreaTree(); if(!AREA_TREE[room]) AREA_TREE[room]=fallbackAreas(room); return AREA_TREE[room]; }
+function findArea(room, name){ return areasFor(room).filter(function(a){ return a.name===name; })[0]||null; }
+function locLabel(d){ return (d.room||'')+(d.area?' › '+d.area:''); }
+function hideQuickNotes(){ var a=state.formArea&&findArea(state.formRoom,state.formArea); return !!(a&&a.items&&a.items.length); }
+function areaChipsHtml(room, cur, manage){
+  var list=areasFor(room);
+  var h=list.map(function(a){ return '<span class="chip tapopt'+(a.name===cur?' is-active':'')+(manage?' chip-del':'')+'" data-group="area" data-value="'+attr(a.name)+'" data-action="'+(manage?'del-area':'pick-area')+'">'+esc(a.name)+(manage?' ✕':'')+'</span>'; }).join('');
+  h+='<span class="chip tapopt" data-action="add-area" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;">+ เพิ่มบริเวณ</span>';
+  if(list.length) h+='<span class="chip tapopt" data-action="toggle-manage-areas" style="border-style:dashed;color:var(--fg-2);font-weight:600;">'+(manage?'✓ เสร็จ':'จัดการ/ลบ')+'</span>';
+  return h;
+}
+function itemChipsHtml(room, areaName, manage){
+  var a=findArea(room, areaName); if(!a) return '';
+  var h=(a.items||[]).map(function(it,i){ return '<span class="chip tapopt qn-chip item-chip'+(manage?' chip-del':'')+'" data-action="'+(manage?'del-item':'pick-item')+'" data-index="'+i+'" data-note="'+attr(it.t)+'" data-cat="'+attr(it.c||'')+'">'+(manage?'':'+ ')+esc(it.t)+(manage?' ✕':'')+'</span>'; }).join('');
+  h+='<span class="chip tapopt" data-action="add-item" style="border-style:dashed;color:var(--ap-red-600);font-weight:600;font-size:12px;padding:6px 11px;">+ เพิ่มรายการ</span>';
+  if((a.items||[]).length) h+='<span class="chip tapopt" data-action="toggle-manage-items" style="border-style:dashed;color:var(--fg-2);font-weight:600;font-size:12px;padding:6px 11px;">'+(manage?'✓ เสร็จ':'จัดการ/ลบ')+'</span>';
+  return h;
+}
+function locStepsHtml(){
+  var room=state.formRoom, area=state.formArea||'';
+  var h='<div class="step-label">2 · บริเวณ <span style="font-weight:400;color:var(--fg-3);">(ไม่บังคับ)</span></div><div class="chip-row">'+areaChipsHtml(room, area, state.manageAreas)+'</div>';
+  if(area) h+='<div class="step-label" style="margin-top:14px;">3 · รายการที่พบ <span style="font-weight:400;color:var(--fg-3);">(แตะเพื่อใส่ในรายละเอียด · ตั้งหมวดให้อัตโนมัติ)</span></div><div class="chip-row">'+itemChipsHtml(room, area, state.manageItems)+'</div>';
+  return h;
+}
+function refreshLocSteps(){
+  var el=document.getElementById('loc-steps'); if(el) el.innerHTML=locStepsHtml();
+  var cr=document.getElementById('loc-crumb'); if(cr) cr.textContent=(state.formRoom||'')+(state.formArea?' › '+state.formArea:'');
+  var qn=document.getElementById('quick-notes'); if(qn) qn.style.display=hideQuickNotes()?'none':'';
+}
+function pickItem(el){
+  var c=el.getAttribute('data-cat');
+  if(c && CATS.some(function(k){ return k.id===c; })){
+    document.querySelectorAll('#defect-overlay [data-group="cat"]').forEach(function(s){ s.classList.toggle('is-active', s.getAttribute('data-value')===c); });
+    state.formCat=c; updateQuickNotes(c);
+  }
+  appendQuickNote(el.getAttribute('data-note'), true);
+  el.classList.add('is-active');
+}
+function addArea(){
+  captureDefectForm();
+  var room=state.formRoom; if(!room){ window.alert('เลือกห้อง / พื้นที่ก่อน'); return; }
+  var name=(window.prompt('ชื่อบริเวณใหม่ใน "'+room+'"\nเช่น สนามหญ้า, ผนังด้านทิศเหนือ')||'').trim(); if(!name) return;
+  var list=ensureAreas(room); if(!list.some(function(a){ return a.name===name; })) list.push({name:name,items:[]});
+  saveAreaTree(); state.formArea=name; state.manageAreas=false; render();
+}
+function addItem(){
+  captureDefectForm();
+  var list=ensureAreas(state.formRoom), a=list.filter(function(x){ return x.name===state.formArea; })[0]; if(!a) return;
+  var cat=state.formCat||((CATS[0]&&CATS[0].id)||'');
+  var name=(window.prompt('รายการ defect ใหม่ใน "'+a.name+'"\n(ผูกกับหมวด: '+catName(cat)+' — ถ้าต้องการหมวดอื่น ให้เลือกหมวดก่อนกดเพิ่ม)')||'').trim(); if(!name) return;
+  a.items=a.items||[]; if(!a.items.some(function(it){ return it.t===name; })) a.items.push({t:name,c:cat});
+  saveAreaTree();
+  var cur=(state.formNoteDraft||'').trim(); if(cur==='(ไม่มีรายละเอียด)') cur='';
+  if(cur.indexOf(name)<0) state.formNoteDraft = cur ? cur+' · '+name : name;
+  state.manageItems=false; render();
+}
+function removeArea(name){
+  if(!name || !window.confirm('ลบบริเวณ "'+name+'" ออกจาก "'+state.formRoom+'" ใช่หรือไม่?\n(defect เดิมที่บันทึกไว้จะยังแสดงชื่อเดิม)')) return;
+  captureDefectForm();
+  var room=state.formRoom; AREA_TREE[room]=ensureAreas(room).filter(function(a){ return a.name!==name; }); saveAreaTree();
+  if(state.formArea===name) state.formArea='';
+  if(!AREA_TREE[room].length) state.manageAreas=false;
+  render();
+}
+function removeItem(idx){
+  captureDefectForm();
+  var list=ensureAreas(state.formRoom), a=list.filter(function(x){ return x.name===state.formArea; })[0]; if(!a||!a.items) return;
+  var it=a.items[idx]; if(!it || !window.confirm('ลบรายการ "'+it.t+'" ใช่หรือไม่?')) return;
+  a.items.splice(idx,1); saveAreaTree(); if(!a.items.length) state.manageItems=false; render();
+}
+
 function loadCustomLists(){
   try{ (JSON.parse(localStorage.getItem(CAT_KEY)||'[]')||[]).forEach(function(x){ if(x&&x.id&&x.name&&!CATS.some(function(k){return k.id===x.id;})) CATS.push(x); }); }catch(e){}
   try{ (JSON.parse(localStorage.getItem(ROOM_KEY)||'[]')||[]).forEach(function(x){ if(x&&ROOMS.indexOf(x)<0) ROOMS.push(x); }); }catch(e){}
   try{ var dc=JSON.parse(localStorage.getItem(CAT_DEL_KEY)||'[]')||[]; if(dc.length) CATS=CATS.filter(function(c){ return dc.indexOf(c.id)<0; }); }catch(e){}
   try{ var dr=JSON.parse(localStorage.getItem(ROOM_DEL_KEY)||'[]')||[]; if(dr.length) ROOMS=ROOMS.filter(function(r){ return dr.indexOf(r)<0; }); }catch(e){}
+  loadAreaTree();
 }
 var TYPES = ['บ้านเดี่ยว','บ้านแฝด','ทาวน์โฮม','คอนโดฯ'];
 
@@ -529,7 +662,7 @@ function sortedDefects(ds, mode){
   if(mode==='cat'){
     arr.sort(function(a,b){ var ia=CATS.findIndex(function(c){return c.id===a.cat;}), ib=CATS.findIndex(function(c){return c.id===b.cat;}); ia=ia<0?999:ia; ib=ib<0?999:ib; return ia-ib || String(catName(a.cat)).localeCompare(String(catName(b.cat)),'th'); });
   } else if(mode==='room'){
-    arr.sort(function(a,b){ var ia=ROOMS.indexOf(a.room), ib=ROOMS.indexOf(b.room); ia=ia<0?999:ia; ib=ib<0?999:ib; return ia-ib || String(a.room).localeCompare(String(b.room),'th'); });
+    arr.sort(function(a,b){ var ia=ROOMS.indexOf(a.room), ib=ROOMS.indexOf(b.room); ia=ia<0?999:ia; ib=ib<0?999:ib; return ia-ib || String(a.room).localeCompare(String(b.room),'th') || String(a.area||'').localeCompare(String(b.area||''),'th'); });
   }
   return arr;
 }
@@ -715,7 +848,7 @@ function renderDashFilterOverlay(){
     var loc=r.P.name+' · '+(r.U.kind==='common'?'ส่วนกลาง':(r.U.plot?'แปลง '+r.U.plot:r.U.code))+' · ครั้งที่ '+(r.S.round||1);
     return '<div class="card tapopt" data-action="open-aged-defect" data-pid="'+attr(r.P.id)+'" data-uid="'+attr(r.U.id)+'" data-sid="'+attr(r.S.id)+'" data-did="'+attr(d.id)+'" style="padding:12px 14px;margin-bottom:10px;">'+
       '<div style="font-size:11.5px;color:var(--fg-3);margin-bottom:4px;">'+esc(loc)+'</div>'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:14px;font-weight:700;">'+esc(d.room||'')+'</span>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:14px;font-weight:700;">'+esc(locLabel(d))+'</span>'+
         '<span style="margin-left:auto;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:'+st.bg+';color:'+st.color+';">'+esc(st.name)+'</span>'+
         '<span style="font-size:11px;color:'+sv.color+';font-weight:600;">'+esc(sv.name)+'</span></div>'+
       '<div style="font-size:12.5px;color:var(--fg-1);">'+esc(d.note||'')+'</div></div>';
@@ -959,7 +1092,7 @@ function defectListHtml(S){
     var thumbInner = hasPhoto ? (beforeExtra?'<span class="dthumb-more">+'+beforeExtra+'</span>':'') : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.6"></circle><path d="m21 15-5-5L5 21"></path></svg>';
     var canUp = idx>0, canDown = idx<S.defects.length-1;
     var upC = canUp?'var(--fg-2)':'var(--ap-neutral-400)', dnC = canDown?'var(--fg-2)':'var(--ap-neutral-400)';
-    return '<div class="card dcard tapopt" data-dcard data-status="'+attr(d.status)+'" data-search="'+attr((d.room+' '+catName(d.cat)+' '+(d.note||'')).toLowerCase())+'" data-action="open-overlay-defect" data-mode="edit" data-id="'+attr(d.id)+'">' +
+    return '<div class="card dcard tapopt" data-dcard data-status="'+attr(d.status)+'" data-search="'+attr((locLabel(d)+' '+catName(d.cat)+' '+(d.note||'')).toLowerCase())+'" data-action="open-overlay-defect" data-mode="edit" data-id="'+attr(d.id)+'">' +
       '<div class="dnum">'+(idx+1)+'</div>' +
       '<div class="dthumb"'+thumbAttr+'>'+thumbInner+'</div>' +
       '<div class="dbody">' +
@@ -968,7 +1101,7 @@ function defectListHtml(S){
         '<div class="dnote">'+esc(d.note)+'</div>' +
         '<div class="dmeta">' +
           '<span class="dsev" style="color:'+sev.color+';">● '+esc(sev.name)+'</span>' +
-          '<span class="droom">'+esc(d.room)+'</span>' +
+          '<span class="droom">'+esc(locLabel(d))+'</span>' +
           (afterN?'<span class="dafter">✓ หลัง '+afterN+'</span>':'') +
           '<span class="dacts">' +
             '<span class="tapopt" data-action="move-defect" data-dir="up" data-id="'+attr(d.id)+'" style="color:'+upC+';"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span>' +
@@ -1016,7 +1149,7 @@ function renderAgingOverlay(){
     var bc=a>=14?'var(--ap-red-600)':'#9B6612';
     return '<div class="card tapopt" data-action="open-overlay-defect" data-mode="edit" data-id="'+attr(d.id)+'" style="padding:12px 14px;margin-bottom:10px;">'+
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'+
-        '<span style="font-size:14px;font-weight:700;">'+esc(d.room||'')+'</span>'+
+        '<span style="font-size:14px;font-weight:700;">'+esc(locLabel(d))+'</span>'+
         '<span style="font-size:12px;color:var(--fg-2);">'+esc(catName(d.cat))+'</span>'+
         '<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+bc+';white-space:nowrap;">ค้าง '+a+' วัน</span></div>'+
       '<div style="font-size:12.5px;color:var(--fg-1);margin-bottom:7px;">'+esc(d.note||'')+'</div>'+
@@ -1064,7 +1197,7 @@ function renderGlobalAgingOverlay(){
     return '<div class="card tapopt" data-action="open-aged-defect" data-pid="'+attr(x.P.id)+'" data-uid="'+attr(x.U.id)+'" data-sid="'+attr(x.S.id)+'" data-did="'+attr(d.id)+'" style="padding:12px 14px;margin-bottom:10px;">'+
       '<div style="font-size:11.5px;color:var(--fg-3);margin-bottom:4px;">'+esc(loc)+'</div>'+
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'+
-        '<span style="font-size:14px;font-weight:700;">'+esc(d.room||'')+'</span>'+
+        '<span style="font-size:14px;font-weight:700;">'+esc(locLabel(d))+'</span>'+
         '<span style="font-size:12px;color:var(--fg-2);">'+esc(catName(d.cat))+'</span>'+
         '<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+bc+';white-space:nowrap;">ค้าง '+a+' วัน</span></div>'+
       '<div style="font-size:12.5px;color:var(--fg-1);margin-bottom:7px;">'+esc(d.note||'')+'</div>'+
@@ -1307,12 +1440,14 @@ function renderDefectOverlay(){
       '<div style="font-size:12px;font-weight:600;color:var(--fg-2);margin-bottom:7px;">หลังแก้ไข (ถ้ามี)</div>' +
       '<div id="defect-photo-strip-after">'+renderPhotoStripHtml('after')+'</div>' +
     '</div>' +
-    '<div class="form-group"><div class="field-label">ห้อง / พื้นที่</div><div class="chip-row">'+roomChips+'</div></div>' +
+    '<div class="form-group"><div class="field-label">ตำแหน่ง <span id="loc-crumb" style="font-weight:600;color:var(--ap-red-600);">'+esc((curRoom||'')+(state.formArea?' › '+state.formArea:''))+'</span></div>' +
+      '<div class="step-label">1 · ห้อง / พื้นที่</div><div class="chip-row">'+roomChips+'</div>' +
+      '<div id="loc-steps" style="margin-top:14px;">'+locStepsHtml()+'</div></div>' +
     '<div class="form-group"><div class="field-label">หมวดหมู่</div><div class="chip-row">'+catChips+'</div></div>' +
     '<div class="form-group"><div class="field-label">ระดับความรุนแรง</div><div style="display:flex;gap:8px;">'+sevChips+'</div></div>' +
     '<div class="form-group"><div class="field-label">สถานะการแก้ไข</div><div style="display:flex;gap:8px;">'+stChips+'</div></div>' +
     '<div class="form-group"><div class="field-label">รายละเอียด</div>' +
-      '<div id="quick-notes" class="chip-row" style="margin-bottom:8px;">'+quickNoteChipsHtml(curCat)+'</div>' +
+      '<div id="quick-notes" class="chip-row" style="margin-bottom:8px;'+(hideQuickNotes()?'display:none;':'')+'">'+quickNoteChipsHtml(curCat)+'</div>' +
       '<textarea class="fld" id="f-d-note" rows="3" placeholder="พิมพ์รายละเอียดที่พบ…">'+esc(note)+'</textarea></div>' +
     '<button type="button" class="btn-primary tapopt" data-action="submit-defect" style="margin-top:4px;">'+(isEdit?'บันทึกการแก้ไข':'บันทึก defect')+'</button></div>';
 }
@@ -1452,13 +1587,13 @@ function openUnitOverlay(mode,id){ state.overlay='unit'; state.formMode=mode; st
 function openSheetOverlay(mode,id){ state.overlay='sheet'; state.formMode=mode; state.editId=id||null; if(mode!=='edit'){ var P=findProject(state.curP),U=findUnit(P,state.curU); state.formSheetMode=(U&&U.kind==='common')?'common':'handover'; } render(); }
 function openDefectOverlay(mode,id){
   state.overlay='defect'; state.formMode=mode; state.editId=id||null;
-  state.manageCats=false; state.manageRooms=false;
+  state.manageCats=false; state.manageRooms=false; state.manageAreas=false; state.manageItems=false; state.formArea='';
   state.formCat=(CATS[0]&&CATS[0].id)||''; state.formSev='minor'; state.formRoom=lastRoom(); state.formNoteDraft=''; state.formStatus='open';
   if (mode==='edit'){
     var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS),D=findDefect(S,id);
     pendingPhotos=[]; pendingPhotosAfter=[];
     if (D){
-      state.formCat=D.cat; state.formSev=normSev(D.sev); state.formRoom=D.room; state.formNoteDraft=D.note||''; state.formStatus=D.status||'open';
+      state.formCat=D.cat; state.formSev=normSev(D.sev); state.formRoom=D.room; state.formArea=D.area||''; state.formNoteDraft=D.note||''; state.formStatus=D.status||'open';
       function loadSet(ids){ return Promise.all((ids||[]).map(function(pid){ return Photos.get(pid).then(function(url){ return {url:url,photoId:pid}; }); })); }
       Promise.all([loadSet(D.photoIds), loadSet(D.photoIdsAfter)]).then(function(res){
         pendingPhotos=res[0].filter(function(x){return x.url;});
@@ -1619,7 +1754,7 @@ function buildBackupBlob(then){
   Promise.all(ids.map(function(id){ return Photos.get(id).then(function(u){ return [id,u]; }).catch(function(){ return [id,null]; }); })).then(function(entries){
     var photos={}; entries.forEach(function(e){ if(e[1]) photos[e[0]]=e[1]; });
     var data={ app:'ap-inspect', schema:'v4', version:APP_VERSION, exportedAt:new Date().toISOString(),
-      projects:projects, photos:photos, cats:readList(CAT_KEY), rooms:readList(ROOM_KEY), catsDel:readList(CAT_DEL_KEY), roomsDel:readList(ROOM_DEL_KEY) };
+      projects:projects, photos:photos, cats:readList(CAT_KEY), rooms:readList(ROOM_KEY), catsDel:readList(CAT_DEL_KEY), roomsDel:readList(ROOM_DEL_KEY), areas:(function(){ try{ return JSON.parse(localStorage.getItem(AREA_KEY)||'null'); }catch(e){ return null; } })() };
     then(new Blob([JSON.stringify(data)],{type:'application/json'}));
   });
 }
@@ -1842,7 +1977,7 @@ function duplicateDefect(did){
   var P=findProject(state.curP),U=findUnit(P,state.curU),S=findSheet(U,state.curS); if(!S) return;
   var i=S.defects.findIndex(function(d){ return d.id===did; }); if(i<0) return;
   var d=S.defects[i];
-  var copy={ id:uid(), room:d.room, cat:d.cat, sev:d.sev, status:'open', note:d.note, photoIds:[], photoIdsAfter:[], time:'', createdAt:Date.now() };
+  var copy={ id:uid(), room:d.room, area:d.area||'', cat:d.cat, sev:d.sev, status:'open', note:d.note, photoIds:[], photoIdsAfter:[], time:'', createdAt:Date.now() };
   S.defects.splice(i+1,0,copy); persist(); render();
 }
 function bulkDoneVisible(){
@@ -1850,7 +1985,7 @@ function bulkDoneVisible(){
   var q=(dfQuery||'').trim().toLowerCase();
   var targets=(S.defects||[]).filter(function(d){
     var okS=dfStatus==='all'||d.status===dfStatus;
-    var okQ=!q||((d.room+' '+catName(d.cat)+' '+(d.note||'')).toLowerCase().indexOf(q)>=0);
+    var okQ=!q||((locLabel(d)+' '+catName(d.cat)+' '+(d.note||'')).toLowerCase().indexOf(q)>=0);
     return okS && okQ && d.status!=='done';
   });
   if(!targets.length){ window.alert('ไม่มีรายการที่ยังไม่แก้ในมุมมองที่แสดงอยู่'); return; }
@@ -1867,6 +2002,7 @@ function restoreFromData(data, confirmMsg){
     try{ if(Array.isArray(data.rooms)) localStorage.setItem(ROOM_KEY, JSON.stringify(data.rooms)); }catch(e){}
     try{ localStorage.setItem(CAT_DEL_KEY, JSON.stringify(Array.isArray(data.catsDel)?data.catsDel:[])); }catch(e){}
     try{ localStorage.setItem(ROOM_DEL_KEY, JSON.stringify(Array.isArray(data.roomsDel)?data.roomsDel:[])); }catch(e){}
+    try{ if(data.areas&&typeof data.areas==='object'&&!Array.isArray(data.areas)) localStorage.setItem(AREA_KEY, JSON.stringify(data.areas)); }catch(e){}
     if(photoUrlCache && photoUrlCache.clear) photoUrlCache.clear();
     loadCustomLists();
     markBackedUp(); /* ข้อมูลตรงกับไฟล์สำรองแล้ว ไม่ต้องเตือน */
@@ -1929,14 +2065,15 @@ function submitDefectForm(){
   var sev=sevChip?sevChip.getAttribute('data-value'):'minor';
   var room=roomChip?roomChip.getAttribute('data-value'):ROOMS[0];
   var status=statusChip?statusChip.getAttribute('data-value'):'open';
+  var area=(room===state.formRoom)?(state.formArea||''):'';
   if(room){ try{ localStorage.setItem(LAST_ROOM_KEY, room); }catch(e){} }
   var now=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
   function resolveSet(list){ return Promise.all(list.map(function(ph){ return ph.photoId?Promise.resolve(ph.photoId):Photos.put(ph.url).then(function(id){ photoUrlCache.set(id,ph.url); return id; }); })); }
   Promise.all([resolveSet(pendingPhotos), resolveSet(pendingPhotosAfter)])
     .then(function(res){
       var photoIds=res[0], photoIdsAfter=res[1];
-      if(state.formMode==='edit'){ var D=findDefect(S,state.editId); if(D){ D.cat=cat; D.sev=sev; D.room=room; D.status=status; D.note=note; D.photoIds=photoIds; D.photoIdsAfter=photoIdsAfter; if(status==='done'){ if(!D.doneAt) D.doneAt=Date.now(); } else { D.doneAt=null; } } state.scrollToDefect=state.editId; }
-      else { var nid=uid(); S.defects.push({id:nid,room:room,cat:cat,sev:sev,status:status,note:note,photoIds:photoIds,photoIdsAfter:photoIdsAfter,time:now,createdAt:Date.now(),doneAt:(status==='done'?Date.now():null)}); state.scrollToDefect=nid; }
+      if(state.formMode==='edit'){ var D=findDefect(S,state.editId); if(D){ D.cat=cat; D.sev=sev; D.room=room; D.area=area; D.status=status; D.note=note; D.photoIds=photoIds; D.photoIdsAfter=photoIdsAfter; if(status==='done'){ if(!D.doneAt) D.doneAt=Date.now(); } else { D.doneAt=null; } } state.scrollToDefect=state.editId; }
+      else { var nid=uid(); S.defects.push({id:nid,room:room,area:area,cat:cat,sev:sev,status:status,note:note,photoIds:photoIds,photoIdsAfter:photoIdsAfter,time:now,createdAt:Date.now(),doneAt:(status==='done'?Date.now():null)}); state.scrollToDefect=nid; }
       persist(); state.overlay=null; pendingPhotos=[]; pendingPhotosAfter=[]; render();
       autoSaveEligible().then(function(ok){
         showBackupToast(ok ? 'บันทึกรายการแล้ว ✓' : 'บันทึกรายการแล้ว · แตะ “บันทึกใบงาน” เพื่อเก็บลงเครื่อง');
@@ -2090,7 +2227,7 @@ function buildReportHtml(P, U, sheets, urlMap, sigMap, sortMode){
       var rs=RSTAT[d.status]||RSTAT.open, sev=SEV[d.sev];
       return '<tr>' +
         '<td class="c">'+(i+1)+'</td>' +
-        '<td><div class="rm">'+esc(d.room)+' / '+esc(catName(d.cat))+' (#'+(i+1)+')</div>' +
+        '<td><div class="rm">'+esc(locLabel(d))+' / '+esc(catName(d.cat))+' (#'+(i+1)+')</div>' +
           '<div class="dt">รายละเอียด : '+esc(d.note)+'</div>' +
           '<div class="sv" style="color:'+sev.color+'">● '+esc(sev.name)+'</div></td>' +
         '<td class="c"><span class="st" style="color:'+rs.color+';background:'+rs.bg+';">'+esc(rs.name)+'</span></td>' +
@@ -2249,7 +2386,15 @@ document.getElementById('app').addEventListener('click', function(e){
     case 'clear-signature': if(sigPad) sigPad.clear(); break;
     case 'remove-signature': removeSignature(el.getAttribute('data-role')); break;
     case 'close-overlay': closeOverlay(); break;
-    case 'pick-chip': { var g=el.getAttribute('data-group'), parent=el.parentElement; parent.querySelectorAll('[data-group="'+g+'"]').forEach(function(s){ s.classList.remove('is-active'); }); el.classList.add('is-active'); if(g==='cat') updateQuickNotes(el.getAttribute('data-value')); break; }
+    case 'pick-chip': { var g=el.getAttribute('data-group'), parent=el.parentElement; parent.querySelectorAll('[data-group="'+g+'"]').forEach(function(s){ s.classList.remove('is-active'); }); el.classList.add('is-active'); if(g==='cat') updateQuickNotes(el.getAttribute('data-value')); if(g==='room'){ state.formRoom=el.getAttribute('data-value'); state.formArea=''; state.manageAreas=false; state.manageItems=false; refreshLocSteps(); } break; }
+    case 'pick-area': { var av=el.getAttribute('data-value'); state.formArea=(state.formArea===av?'':av); state.manageItems=false; refreshLocSteps(); break; }
+    case 'pick-item': pickItem(el); break;
+    case 'add-area': addArea(); break;
+    case 'add-item': addItem(); break;
+    case 'del-area': removeArea(el.getAttribute('data-value')); break;
+    case 'del-item': removeItem(parseInt(el.getAttribute('data-index'),10)); break;
+    case 'toggle-manage-areas': captureDefectForm(); state.manageAreas=!state.manageAreas; render(); break;
+    case 'toggle-manage-items': captureDefectForm(); state.manageItems=!state.manageItems; render(); break;
     case 'submit-project': submitProjectForm(); break;
     case 'delete-project': if(window.confirm('ลบโครงการนี้และข้อมูลทั้งหมด (แปลง ใบงาน defect รูป) ใช่หรือไม่?\n\nลบแล้วกู้คืนไม่ได้ — ควรสำรองข้อมูลก่อน')) removeProject(state.editId); break;
     case 'submit-unit': submitUnitForm(); break;
